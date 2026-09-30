@@ -1,0 +1,12 @@
+node_modules
+out
+dist
+dist-electron
+*.tsbuildinfo
+.DS_Store
+*.log
+
+# Ferramentas locais do assistente de código, não fazem parte do app
+.claude
+.agents
+skills-lock.json
