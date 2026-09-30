@@ -18,6 +18,8 @@ export interface Settings {
   game: GameId
   sens: number
   dpi: number
+  /** FOV como cada jogo mostra, pros jogos que deixam mudar. */
+  fovByGame: Partial<Record<GameId, number>>
   crosshair: CrosshairSettings
   targetColor: string
   backgroundColor: string
@@ -28,6 +30,7 @@ export const DEFAULT_SETTINGS: Settings = {
   game: 'valorant',
   sens: 0.4,
   dpi: 800,
+  fovByGame: {},
   crosshair: {
     style: 'cross',
     color: '#00ffff',
@@ -91,10 +94,18 @@ export function SettingsProvider({ children }: { children: ReactNode }): JSX.Ele
         s.game === game ? s : { ...s, game, sens: roundSens(convertSens(s.sens, s.game, game), game) }
       ),
     updateCrosshair: (patch) => setSettings((s) => ({ ...s, crosshair: { ...s.crosshair, ...patch } })),
-    reset: () => setSettings((s) => ({ ...DEFAULT_SETTINGS, sens: s.sens, dpi: s.dpi }))
+    reset: () =>
+      setSettings((s) => ({ ...DEFAULT_SETTINGS, game: s.game, sens: s.sens, dpi: s.dpi, fovByGame: s.fovByGame }))
   }
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>
+}
+
+/** FOV do jogo atual, como o jogo mostra (o padrão dele se estiver travado ou não configurado). */
+export function gameFovValue(s: Settings): number {
+  const fov = GAMES[s.game].fov
+  if (fov.min === undefined || fov.max === undefined) return fov.default
+  return s.fovByGame[s.game] ?? fov.default
 }
 
 export function useSettings(): SettingsContextValue {

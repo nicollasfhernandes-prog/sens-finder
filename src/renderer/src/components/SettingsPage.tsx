@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { toValorantCode, VALORANT_LIMITS, VALORANT_PRESET_COLORS } from '../lib/crosshairCode'
-import { CrosshairStyle, useSettings } from '../settings'
+import { GAME_IDS, GameId, GAMES, horizontalFov169, verticalFov } from '../lib/sensitivity'
+import { CrosshairStyle, gameFovValue, useSettings } from '../settings'
 import Crosshair from './Crosshair'
 
 const CROSSHAIR_STYLES: { id: CrosshairStyle; label: string }[] = [
@@ -62,9 +63,12 @@ function SliderField({ label, value, min, max, onChange }: SliderProps): JSX.Ele
 }
 
 export default function SettingsPage(): JSX.Element {
-  const { settings, updateCrosshair, update, reset } = useSettings()
+  const { settings, updateCrosshair, update, changeGame, reset } = useSettings()
   const [copied, setCopied] = useState(false)
   const ch = settings.crosshair
+  const game = GAMES[settings.game]
+  const fov = game.fov
+  const fovValue = gameFovValue(settings)
   const showLines = ch.style !== 'dot'
   const showDot = ch.style !== 'cross'
   const code = toValorantCode(ch)
@@ -85,22 +89,51 @@ export default function SettingsPage(): JSX.Element {
       <div className="settings-layout">
         <div className="settings-form">
           <fieldset className="panel">
-            <legend className="panel-title">Mouse</legend>
-            <label className="field">
-              <span className="label">DPI</span>
-              <input
-                className="input num"
-                type="number"
-                min={100}
-                max={26000}
-                value={settings.dpi}
-                onChange={(e) => {
-                  const dpi = Number(e.target.value)
-                  if (dpi > 0) update({ dpi })
-                }}
+            <legend className="panel-title">Jogo e mouse</legend>
+            <div className="field-row">
+              <label className="field">
+                <span className="label">Jogo</span>
+                <select className="input" value={settings.game} onChange={(e) => changeGame(e.target.value as GameId)}>
+                  {GAME_IDS.map((id) => (
+                    <option key={id} value={id}>
+                      {GAMES[id].label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span className="label">DPI</span>
+                <input
+                  className="input num"
+                  type="number"
+                  min={100}
+                  max={26000}
+                  value={settings.dpi}
+                  onChange={(e) => {
+                    const dpi = Number(e.target.value)
+                    if (dpi > 0) update({ dpi })
+                  }}
+                />
+              </label>
+            </div>
+
+            {fov.min !== undefined && fov.max !== undefined ? (
+              <SliderField
+                label={`FOV no ${game.label}`}
+                value={fovValue}
+                min={fov.min}
+                max={fov.max}
+                onChange={(v) => update({ fovByGame: { ...settings.fovByGame, [settings.game]: v } })}
               />
-            </label>
-            <p className="fine">Usado pra calcular quantos centímetros de mousepad cada sensibilidade usa por volta.</p>
+            ) : (
+              <p className="field-note">
+                O {game.label} tem FOV fixo, e os treinos usam o mesmo campo de visão do jogo.
+              </p>
+            )}
+            <p className="fine">
+              Equivale a {horizontalFov169(verticalFov(settings.game, fovValue)).toFixed(1).replace('.', ',')}° de campo
+              de visão horizontal numa tela 16:9. Use o mesmo FOV do jogo pra mira andar na tela na mesma velocidade.
+            </p>
           </fieldset>
 
           <fieldset className="panel">

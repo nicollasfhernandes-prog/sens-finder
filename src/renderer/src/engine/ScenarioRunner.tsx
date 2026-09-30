@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { GAMES } from '../lib/sensitivity'
+import { GAMES, verticalFov } from '../lib/sensitivity'
 import { createRangeEnv, disposeRangeEnv } from '../lib/range3d'
 import { normalizeDeg, radToDeg, sphericalOf } from '../lib/trajectory'
 import { MetricsRecorder } from './metrics'
 import { buildBot, buildSphere, disposeObject, setHighlighted } from './targets'
 import { HitPart, Pose, ScenarioContext, ScenarioDef, ScenarioResult, Target } from './types'
 import Crosshair from '../components/Crosshair'
-import { useSettings } from '../settings'
+import { gameFovValue, useSettings } from '../settings'
 
 interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,6 +36,7 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
   const mountRef = useRef<HTMLDivElement>(null)
   const [phase, setPhase] = useState<'ready' | 'running'>('ready')
   const [hud, setHud] = useState<Hud>({ remaining: '', score: 0, accuracy: 1 })
+  const [rawInput, setRawInput] = useState<boolean | null>(null)
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
 
@@ -44,7 +45,11 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
     const container = mountRef.current
     window.api?.setFullscreen(true)
 
-    const env = createRangeEnv(container, { background: settings.backgroundColor, wall: settings.wallColor })
+    const env = createRangeEnv(
+      container,
+      { background: settings.backgroundColor, wall: settings.wallColor },
+      verticalFov(settings.game, gameFovValue(settings))
+    )
     const targetColor = settings.targetColor
     const { renderer, scene, camera } = env
     const raycaster = new THREE.Raycaster()
@@ -184,7 +189,17 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
       renderer.setSize(w, h)
     }
     window.addEventListener('resize', resize)
-    container.requestPointerLock()
+
+    // Movimento cru, como os jogos leem (raw input): sem isso o Chromium aplica a aceleração
+    // ("Aumentar precisão do ponteiro") e a velocidade do ponteiro do Windows, e movimentos
+    // lentos chegam encolhidos — a sens parece bem mais baixa que no jogo.
+    const lock = container.requestPointerLock as (options?: { unadjustedMovement?: boolean }) => Promise<void> | void
+    Promise.resolve(lock.call(container, { unadjustedMovement: true }))
+      .then(() => setRawInput(true))
+      .catch(() => {
+        setRawInput(false)
+        container.requestPointerLock()
+      })
 
     function onMouseMove(e: MouseEvent): void {
       if (!document.pointerLockElement || ended) return
@@ -340,6 +355,12 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
             <span className="hud-value">{Math.round(hud.accuracy * 100)}%</span>
           </div>
         </div>
+        {rawInput === false && (
+          <div className="aim-warning">
+            Entrada crua do mouse indisponível: desligue "Aumentar precisão do ponteiro" no Windows pra
+            sens bater com o jogo.
+          </div>
+        )}
         <div className="aim-keys">
           <span>
             <kbd>R</kbd> reiniciar

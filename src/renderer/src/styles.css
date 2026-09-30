@@ -1014,8 +1014,14 @@ select.input {
   margin-top: 20px;
 }
 
-.settings-form .input.num {
-  max-width: 180px;
+.settings-form .field-row + .field,
+.settings-form .field-row + .field-note {
+  margin-top: 20px;
+}
+
+.field-note {
+  font-size: 14px;
+  color: var(--muted);
 }
 
 .swatches {
@@ -1296,6 +1302,21 @@ input[type='range']:hover::-webkit-slider-thumb {
 
 .hud-timer .hud-value {
   font-size: 36px;
+}
+
+.aim-warning {
+  position: absolute;
+  top: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  max-width: 560px;
+  padding: 8px 14px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--text);
+  background: rgba(255, 70, 85, 0.18);
+  border: 1px solid var(--accent);
 }
 
 .aim-keys {

@@ -3,8 +3,24 @@ import type { ScenarioResult } from '../engine/types'
 
 export type GameId = 'valorant' | 'cs2' | 'apex' | 'overwatch2' | 'cod' | 'fortnite' | 'r6siege'
 
+/**
+ * Como o jogo mede o FOV que o jogador configura:
+ * 'v' = vertical; 'h16:9' = horizontal numa tela 16:9; 'h4:3' = horizontal numa tela 4:3
+ * (Source/Apex). Todos rodam "Hor+": o FOV vertical fica fixo e o horizontal abre em telas largas.
+ */
+export type FovType = 'v' | 'h16:9' | 'h4:3'
+
+export interface FovInfo {
+  type: FovType
+  default: number
+  /** Ausentes quando o jogo não deixa mudar o FOV. */
+  min?: number
+  max?: number
+}
+
 export interface GameInfo {
   label: string
+  fov: FovInfo
   /** Graus girados por count do mouse com sensibilidade 1 (na unidade que o jogo mostra). */
   yaw: number
   /** Casas decimais que o jogo aceita no campo de sensibilidade. */
@@ -19,6 +35,7 @@ export interface GameInfo {
 export const GAMES: Record<GameId, GameInfo> = {
   valorant: {
     label: 'Valorant',
+    fov: { type: 'h16:9', default: 103 },
     yaw: 0.07,
     decimals: 3,
     step: 0.005,
@@ -26,6 +43,7 @@ export const GAMES: Record<GameId, GameInfo> = {
   },
   cs2: {
     label: 'CS2',
+    fov: { type: 'h4:3', default: 90 },
     yaw: 0.022,
     decimals: 2,
     step: 0.01,
@@ -33,6 +51,7 @@ export const GAMES: Record<GameId, GameInfo> = {
   },
   apex: {
     label: 'Apex Legends',
+    fov: { type: 'h4:3', default: 90, min: 70, max: 110 },
     yaw: 0.022,
     decimals: 2,
     step: 0.05,
@@ -40,6 +59,7 @@ export const GAMES: Record<GameId, GameInfo> = {
   },
   overwatch2: {
     label: 'Overwatch 2',
+    fov: { type: 'h16:9', default: 103, min: 80, max: 103 },
     yaw: 0.0066,
     decimals: 2,
     step: 0.1,
@@ -47,6 +67,7 @@ export const GAMES: Record<GameId, GameInfo> = {
   },
   cod: {
     label: 'Call of Duty',
+    fov: { type: 'h16:9', default: 80, min: 60, max: 120 },
     yaw: 0.0066,
     decimals: 2,
     step: 0.05,
@@ -55,6 +76,7 @@ export const GAMES: Record<GameId, GameInfo> = {
   fortnite: {
     // Fortnite mostra a sens em porcentagem: 0,5555° por count a 100%.
     label: 'Fortnite',
+    fov: { type: 'h16:9', default: 80 },
     yaw: 0.005555,
     decimals: 1,
     step: 0.1,
@@ -63,6 +85,7 @@ export const GAMES: Record<GameId, GameInfo> = {
   r6siege: {
     // Com MouseSensitivityMultiplierUnit no padrão 0,02.
     label: 'Rainbow Six Siege',
+    fov: { type: 'v', default: 60, min: 60, max: 90 },
     yaw: 0.00573,
     decimals: 0,
     step: 1,
@@ -71,6 +94,21 @@ export const GAMES: Record<GameId, GameInfo> = {
 }
 
 export const GAME_IDS = Object.keys(GAMES) as GameId[]
+
+const DEG = Math.PI / 180
+
+/** Converte o valor de FOV como o jogo mostra pro FOV vertical, que é o que a câmera 3D usa. */
+export function verticalFov(game: GameId, value: number): number {
+  const { type } = GAMES[game].fov
+  if (type === 'v') return value
+  const aspect = type === 'h16:9' ? 16 / 9 : 4 / 3
+  return (2 * Math.atan(Math.tan((value * DEG) / 2) / aspect)) / DEG
+}
+
+/** FOV horizontal numa tela 16:9, pra mostrar ao jogador um número comparável entre jogos. */
+export function horizontalFov169(verticalDeg: number): number {
+  return (2 * Math.atan(Math.tan((verticalDeg * DEG) / 2) * (16 / 9))) / DEG
+}
 
 const CM_PER_INCH = 2.54
 

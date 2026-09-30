@@ -1,7 +1,6 @@
 import * as THREE from 'three'
 
 export const EYE_HEIGHT = 1.6
-export const FOV_DEG = 103
 
 export const WALL_DISTANCE = 12
 const WALL_WIDTH = 30
@@ -37,7 +36,8 @@ function makeWallGrid(side: 1 | -1, color: THREE.Color): THREE.LineSegments {
   return new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color }))
 }
 
-export function createRangeEnv(container: HTMLDivElement, theme: RangeTheme): RangeEnv {
+/** verticalFovDeg: FOV vertical, que é o que o three.js usa (não o horizontal que os jogos mostram). */
+export function createRangeEnv(container: HTMLDivElement, theme: RangeTheme, verticalFovDeg: number): RangeEnv {
   const width = container.clientWidth
   const height = container.clientHeight
 
@@ -55,7 +55,7 @@ export function createRangeEnv(container: HTMLDivElement, theme: RangeTheme): Ra
   const lineColor = wallColor.clone().lerp(new THREE.Color(0xffffff), 0.12)
   const floorColor = wallColor.clone().lerp(bg, 0.5)
 
-  const camera = new THREE.PerspectiveCamera(FOV_DEG, height > 0 ? width / height : 16 / 9, 0.1, 1000)
+  const camera = new THREE.PerspectiveCamera(verticalFovDeg, height > 0 ? width / height : 16 / 9, 0.1, 1000)
   camera.position.set(0, EYE_HEIGHT, 0)
   camera.rotation.order = 'YXZ'
 
