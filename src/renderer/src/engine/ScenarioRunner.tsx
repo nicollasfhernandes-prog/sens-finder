@@ -19,6 +19,7 @@ interface Props {
 }
 
 const PITCH_LIMIT = THREE.MathUtils.degToRad(89)
+const RESTART_HOLD_MS = 600
 const DEFAULT_RADIUS = 0.5
 
 interface Hud {
@@ -37,6 +38,9 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
   const [phase, setPhase] = useState<'ready' | 'running'>('ready')
   const [hud, setHud] = useState<Hud>({ remaining: '', score: 0, accuracy: 1 })
   const [rawInput, setRawInput] = useState<boolean | null>(null)
+  const [paused, setPaused] = useState(false)
+  const [restartHold, setRestartHold] = useState(0)
+  const controlsRef = useRef<{ resume: () => void; restart: () => void } | null>(null)
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
 
@@ -66,6 +70,11 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
     let lastHudAt = 0
     let startedAt = performance.now()
     let lastT = startedAt
+    // Começa pausado até o mouse travar; o relógio só anda com o jogador no controle.
+    let paused = true
+    let pausedAt = startedAt
+    let rHeldSince: number | null = null
+    let lastHoldShown = 0
 
     let rec = new MetricsRecorder(def.scoring, def.mode, startedAt)
     const targets: Target[] = []
@@ -168,8 +177,11 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
       pitch = 0
       camera.rotation.set(0, 0, 0, 'YXZ')
       firing = false
+      rHeldSince = null
+      setRestartHold(0)
       startedAt = performance.now()
       lastT = startedAt
+      if (paused) pausedAt = startedAt
       ctx.now = startedAt
       ctx.elapsedMs = 0
       frame = 0
@@ -193,23 +205,63 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
     // Movimento cru, como os jogos leem (raw input): sem isso o Chromium aplica a aceleração
     // ("Aumentar precisão do ponteiro") e a velocidade do ponteiro do Windows, e movimentos
     // lentos chegam encolhidos — a sens parece bem mais baixa que no jogo.
-    const lock = container.requestPointerLock as (options?: { unadjustedMovement?: boolean }) => Promise<void> | void
-    Promise.resolve(lock.call(container, { unadjustedMovement: true }))
-      .then(() => setRawInput(true))
-      .catch(() => {
-        setRawInput(false)
-        container.requestPointerLock()
-      })
+    function lockPointer(): void {
+      const lock = container.requestPointerLock as (options?: { unadjustedMovement?: boolean }) => Promise<void> | void
+      Promise.resolve(lock.call(container, { unadjustedMovement: true }))
+        .then(() => setRawInput(true))
+        .catch((err: unknown) => {
+          if ((err as { name?: string })?.name === 'NotSupportedError') {
+            setRawInput(false)
+            Promise.resolve(container.requestPointerLock()).catch(() => setPaused(true))
+          } else {
+            // Ex.: o Chromium recusa travar de novo logo depois de um Esc. Fica no menu de pausa
+            // e o jogador tenta outra vez.
+            setPaused(true)
+          }
+        })
+    }
+
+    function pause(): void {
+      paused = true
+      pausedAt = performance.now()
+      firing = false
+      rHeldSince = null
+      setRestartHold(0)
+      setPaused(true)
+    }
+
+    function resume(): void {
+      const now = performance.now()
+      const d = now - pausedAt
+      startedAt += d
+      for (const t of targets) {
+        t.spawnedAt += d
+        if (t.expiresAt !== null) t.expiresAt += d
+      }
+      rec.shiftTime(d)
+      lastT = now
+      paused = false
+      setPaused(false)
+    }
+
+    controlsRef.current = {
+      resume: lockPointer,
+      restart: () => {
+        restart()
+        lockPointer()
+      }
+    }
+    lockPointer()
 
     function onMouseMove(e: MouseEvent): void {
-      if (!document.pointerLockElement || ended) return
+      if (!document.pointerLockElement || ended || paused) return
       yaw -= e.movementX * radPerCount
       pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch - e.movementY * radPerCount))
       camera.rotation.set(pitch, yaw, 0, 'YXZ')
     }
 
     function onMouseDown(e: MouseEvent): void {
-      if (e.button !== 0 || !document.pointerLockElement || ended) return
+      if (e.button !== 0 || !document.pointerLockElement || ended || paused) return
       firing = true
       if (def.mode !== 'click') return
       rec.recordShot()
@@ -223,21 +275,28 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
       if (e.button === 0) firing = false
     }
 
+    // Reiniciar exige segurar R: um toque rápido é o reflexo de recarregar dos FPS.
     function onKeyDown(e: KeyboardEvent): void {
-      if (e.code === 'KeyR' && !e.repeat && !ended) restart()
+      if (e.code === 'KeyR' && !e.repeat && !ended && !paused) rHeldSince = performance.now()
+    }
+
+    function onKeyUp(e: KeyboardEvent): void {
+      if (e.code !== 'KeyR') return
+      rHeldSince = null
+      setRestartHold(0)
     }
 
     function onPointerLockChange(): void {
-      if (!document.pointerLockElement && !ended) {
-        ended = true
-        setPhase('ready')
-      }
+      if (ended) return
+      if (!document.pointerLockElement) pause()
+      else if (paused) resume()
     }
 
     document.addEventListener('mousemove', onMouseMove)
     document.addEventListener('mousedown', onMouseDown)
     document.addEventListener('mouseup', onMouseUp)
     document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('keyup', onKeyUp)
     document.addEventListener('pointerlockchange', onPointerLockChange)
 
     function recordTracking(): void {
@@ -267,7 +326,27 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
 
     function loop(): void {
       if (ended) return
+      if (paused) {
+        renderer.render(scene, camera)
+        animId = requestAnimationFrame(loop)
+        return
+      }
       const now = performance.now()
+
+      if (rHeldSince !== null) {
+        const progress = (now - rHeldSince) / RESTART_HOLD_MS
+        if (progress >= 1) {
+          restart()
+          animId = requestAnimationFrame(loop)
+          return
+        }
+        if (progress - lastHoldShown >= 0.05) {
+          lastHoldShown = progress
+          setRestartHold(progress)
+        }
+      } else {
+        lastHoldShown = 0
+      }
       const dtSec = Math.min((now - lastT) / 1000, 0.05)
       lastT = now
       ctx.now = now
@@ -330,7 +409,9 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
       document.removeEventListener('mousedown', onMouseDown)
       document.removeEventListener('mouseup', onMouseUp)
       document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('keyup', onKeyUp)
       document.removeEventListener('pointerlockchange', onPointerLockChange)
+      controlsRef.current = null
       if (document.pointerLockElement === container) document.exitPointerLock()
       targets.forEach((t) => disposeObject(t.root))
       disposeRangeEnv(env, container)
@@ -361,14 +442,41 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
             sens bater com o jogo.
           </div>
         )}
+        {restartHold > 0 && (
+          <div className="aim-restart" role="status">
+            <span>Reiniciando</span>
+            <span className="aim-restart-track">
+              <span className="aim-restart-fill" style={{ width: `${Math.round(restartHold * 100)}%` }} />
+            </span>
+          </div>
+        )}
         <div className="aim-keys">
           <span>
-            <kbd>R</kbd> reiniciar
+            Segure <kbd>R</kbd> pra reiniciar
           </span>
           <span>
-            <kbd>Esc</kbd> sair
+            <kbd>Esc</kbd> pausa
           </span>
         </div>
+        {paused && (
+          <div className="aim-pause">
+            <div className="pause-card">
+              <h2 className="display">Pausado</h2>
+              <p className="lede">O tempo está parado. Continue de onde parou ou reinicie o exercício.</p>
+              <div className="button-row">
+                <button className="btn btn-primary" onClick={() => controlsRef.current?.resume()}>
+                  Continuar
+                </button>
+                <button className="btn btn-ghost" onClick={() => controlsRef.current?.restart()}>
+                  Reiniciar
+                </button>
+                <button className="btn btn-ghost" onClick={onAbort}>
+                  Sair do treino
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="aim-crosshair">
           <Crosshair config={settings.crosshair} />
         </div>
@@ -411,7 +519,7 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
         <div>
           <dt>Atalhos</dt>
           <dd>
-            <kbd>R</kbd> reinicia, <kbd>Esc</kbd> sai
+            Segure <kbd>R</kbd> pra reiniciar, <kbd>Esc</kbd> pausa
           </dd>
         </div>
       </dl>

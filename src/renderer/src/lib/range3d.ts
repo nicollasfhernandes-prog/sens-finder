@@ -90,7 +90,16 @@ export function createRangeEnv(container: HTMLDivElement, theme: RangeTheme, ver
 }
 
 export function disposeRangeEnv(env: RangeEnv, container: HTMLDivElement): void {
+  env.scene.traverse((obj) => {
+    const drawable = obj as THREE.Mesh | THREE.LineSegments
+    drawable.geometry?.dispose()
+    const material = drawable.material as THREE.Material | THREE.Material[] | undefined
+    if (Array.isArray(material)) material.forEach((m) => m.dispose())
+    else material?.dispose()
+  })
   env.renderer.dispose()
+  // Libera o contexto WebGL na hora; o navegador limita quantos podem existir ao mesmo tempo.
+  env.renderer.forceContextLoss()
   if (env.renderer.domElement.parentElement === container) {
     container.removeChild(env.renderer.domElement)
   }

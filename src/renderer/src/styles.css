@@ -1319,6 +1319,51 @@ input[type='range']:hover::-webkit-slider-thumb {
   border: 1px solid var(--accent);
 }
 
+.aim-restart {
+  position: absolute;
+  bottom: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.aim-restart-track {
+  width: 160px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.aim-restart-fill {
+  display: block;
+  height: 100%;
+  background: var(--text);
+}
+
+.aim-pause {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: rgba(11, 20, 28, 0.72);
+  cursor: default;
+}
+
+.pause-card {
+  padding: 32px 36px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.pause-card .lede {
+  margin-top: 10px;
+}
+
 .aim-keys {
   position: absolute;
   bottom: 18px;

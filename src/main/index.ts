@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
 import { join } from 'path'
 
 const isDev = !app.isPackaged
@@ -40,6 +40,10 @@ function createWindow(): void {
 ipcMain.on('set-fullscreen', (_event, value: boolean) => {
   mainWindow?.setFullScreen(Boolean(value))
 })
+
+// O menu padrão do Electron fica escondido mas mantém os atalhos ativos: Ctrl+R recarrega e
+// Ctrl+W fecha a janela — agachar (Ctrl) + recarregar (R) ou andar (W) no meio de um treino.
+Menu.setApplicationMenu(null)
 
 app.whenReady().then(() => {
   createWindow()

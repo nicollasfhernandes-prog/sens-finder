@@ -78,6 +78,11 @@ export class MetricsRecorder {
     return this.trackFrames > 0 ? this.onFrames / this.trackFrames : 1
   }
 
+  /** Desconta um intervalo de pausa, pra ele não contar como tempo até o próximo alvo. */
+  shiftTime(ms: number): void {
+    this.lastResolveAt += ms
+  }
+
   recordFrame(pose: Pose): void {
     this.camPath.push(pose)
   }
