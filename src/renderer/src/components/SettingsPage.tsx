@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { toValorantCode, VALORANT_LIMITS, VALORANT_PRESET_COLORS } from '../lib/crosshairCode'
 import { GAME_IDS, GameId, GAMES, horizontalFov169, verticalFov } from '../lib/sensitivity'
 import { CrosshairStyle, gameFovValue, useSettings } from '../settings'
+import { play, warmAudio } from '../lib/audio'
 import Crosshair from './Crosshair'
 
 const CROSSHAIR_STYLES: { id: CrosshairStyle; label: string }[] = [
@@ -63,7 +64,15 @@ function SliderField({ label, value, min, max, onChange }: SliderProps): JSX.Ele
 }
 
 export default function SettingsPage(): JSX.Element {
-  const { settings, updateCrosshair, update, changeGame, reset } = useSettings()
+  const { settings, updateCrosshair, updateSound, update, changeGame, reset } = useSettings()
+  const snd = settings.sound
+
+  function preview(kind: 'shot' | 'hit' | 'both'): void {
+    warmAudio()
+    const v = snd.volume / 100
+    if (kind !== 'hit') play('shot', v)
+    if (kind !== 'shot') play('hit', v)
+  }
   const [copied, setCopied] = useState(false)
   const ch = settings.crosshair
   const game = GAMES[settings.game]
@@ -185,6 +194,32 @@ export default function SettingsPage(): JSX.Element {
             <SwatchField label="Alvo" value={settings.targetColor} options={TARGET_COLORS} onChange={(targetColor) => update({ targetColor })} />
             <SwatchField label="Fundo" value={settings.backgroundColor} options={BACKGROUND_COLORS} onChange={(backgroundColor) => update({ backgroundColor })} />
             <SwatchField label="Parede" value={settings.wallColor} options={WALL_COLORS} onChange={(wallColor) => update({ wallColor })} />
+          </fieldset>
+
+          <fieldset className="panel">
+            <legend className="panel-title">Som</legend>
+            <SliderField label="Volume" value={snd.volume} min={0} max={100} onChange={(volume) => updateSound({ volume })} />
+            <label className="toggle">
+              <input type="checkbox" checked={snd.shot} onChange={(e) => updateSound({ shot: e.target.checked })} />
+              <span className="toggle-track" />
+              <span>Som de disparo</span>
+            </label>
+            <label className="toggle">
+              <input type="checkbox" checked={snd.hit} onChange={(e) => updateSound({ hit: e.target.checked })} />
+              <span className="toggle-track" />
+              <span>Som de acerto</span>
+            </label>
+            <div className="button-row sound-test">
+              <button type="button" className="btn btn-ghost" onClick={() => preview('shot')}>
+                Ouvir disparo
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={() => preview('hit')}>
+                Ouvir acerto
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={() => preview('both')}>
+                Disparo com acerto
+              </button>
+            </div>
           </fieldset>
 
           <div className="button-row">

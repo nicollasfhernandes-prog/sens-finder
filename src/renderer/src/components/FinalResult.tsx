@@ -4,6 +4,8 @@ import { eDPI, gameCm360, GAMES, roundSens, suggestAdjustment } from '../lib/sen
 import { AimTestResult, QuestionnaireAnswers } from '../types'
 import { FlickBalance, Recommendation, recommendedSens } from './Analysis'
 import MousepadRuler from './MousepadRuler'
+import MotorPanel from './MotorPanel'
+import { summarizeMotor } from '../engine/motor'
 
 interface Props {
   answers: QuestionnaireAnswers
@@ -30,6 +32,13 @@ export default function FinalResult({
   const finalSens = adjustment ? recommendedSens(baseSens, adjustment, gameId) : roundSens(baseSens, gameId)
   const changed = finalSens !== roundSens(baseSens, gameId)
   const b = adjustment?.breakdown
+  // Junta os flicks do Flick e do Gridshot (mesma sens) numa análise só.
+  const motor = aimResult
+    ? summarizeMotor(
+        [...(aimResult.flick.motor?.flicks ?? []), ...(aimResult.gridshot.motor?.flicks ?? [])],
+        aimResult.flick.motor?.cmPerDeg ?? aimResult.gridshot.motor?.cmPerDeg ?? 0
+      )
+    : null
 
   function copyValue(): void {
     navigator.clipboard.writeText(String(finalSens))
@@ -90,6 +99,8 @@ export default function FinalResult({
           </Recommendation>
         </div>
       )}
+
+      {motor && <MotorPanel motor={motor} title="Movimento e memória muscular nos flicks" />}
 
       <p className="fine">
         No {game.label}: {game.where}

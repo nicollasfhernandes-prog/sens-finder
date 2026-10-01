@@ -3,6 +3,8 @@ import ScenarioRunner from '../engine/ScenarioRunner'
 import { ScenarioResult } from '../engine/types'
 import { sensFinderFlick, sensFinderGridshot, sensFinderTracking } from '../scenarios/sensFinder'
 import { AimTestResult } from '../types'
+import { recordSession } from '../lib/history'
+import { useSettings } from '../settings'
 
 interface Props {
   sens: number
@@ -13,10 +15,12 @@ interface Props {
 const STAGES = [sensFinderFlick, sensFinderGridshot, sensFinderTracking]
 
 export default function TestSuite({ sens, onComplete, onAbort }: Props): JSX.Element {
+  const { settings } = useSettings()
   const [results, setResults] = useState<ScenarioResult[]>([])
   const stage = results.length
 
   function handleStageDone(result: ScenarioResult): void {
+    recordSession(result, { game: settings.game, sens, dpi: settings.dpi })
     const next = [...results, result]
     if (next.length < STAGES.length) {
       setResults(next)

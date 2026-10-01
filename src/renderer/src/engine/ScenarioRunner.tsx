@@ -8,6 +8,7 @@ import { buildBot, buildSphere, disposeObject, setHighlighted } from './targets'
 import { HitPart, Pose, ScenarioContext, ScenarioDef, ScenarioResult, Target } from './types'
 import Crosshair from '../components/Crosshair'
 import { gameFovValue, useSettings } from '../settings'
+import { play, warmAudio } from '../lib/audio'
 
 interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -20,6 +21,7 @@ interface Props {
 
 const PITCH_LIMIT = THREE.MathUtils.degToRad(89)
 const RESTART_HOLD_MS = 600
+const TRACK_TICK_MS = 70
 const DEFAULT_RADIUS = 0.5
 
 interface Hud {
@@ -58,6 +60,8 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
     const { renderer, scene, camera } = env
     const raycaster = new THREE.Raycaster()
     const radPerCount = sens * GAMES[settings.game].yaw * (Math.PI / 180)
+    // cm de mousepad por count ÷ graus por count = cm por grau de giro.
+    const cmPerDeg = 2.54 / settings.dpi / (sens * GAMES[settings.game].yaw)
     const camPos = camera.position
 
     let yaw = 0
@@ -75,6 +79,9 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
     let pausedAt = startedAt
     let rHeldSince: number | null = null
     let lastHoldShown = 0
+    let lastTickAt = 0
+    const sound = settings.sound
+    const volume = sound.volume / 100
 
     let rec = new MetricsRecorder(def.scoring, def.mode, startedAt)
     const targets: Target[] = []
@@ -132,6 +139,7 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
     }
 
     function kill(t: Target): void {
+      if (sound.hit) play('hit', volume)
       rec.recordKill(t, ctx.now, frame, pose(), radiusDeg(t))
       removeTarget(t)
       def.onKill?.(ctx, state, t)
@@ -161,12 +169,12 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
       if (ended) return
       ended = true
       cancelAnimationFrame(animId)
-      const result = rec.result(def, ctx.now - startedAt)
+      const result = rec.result(def, ctx.now - startedAt, cmPerDeg)
       if (document.pointerLockElement) document.exitPointerLock()
       onCompleteRef.current(result)
     }
 
-    rec.recordFrame(pose())
+    rec.recordFrame(pose(), startedAt)
     let state = def.init(ctx)
 
     // Reinicia no lugar, sem desmontar a cena: sair e voltar do pointer lock exigiria outro
@@ -186,7 +194,7 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
       ctx.elapsedMs = 0
       frame = 0
       rec = new MetricsRecorder(def.scoring, def.mode, startedAt)
-      rec.recordFrame(pose())
+      rec.recordFrame(pose(), startedAt)
       state = def.init(ctx)
       lastHudAt = 0
     }
@@ -264,11 +272,16 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
       if (e.button !== 0 || !document.pointerLockElement || ended || paused) return
       firing = true
       if (def.mode !== 'click') return
+      if (sound.shot) play('shot', volume)
       rec.recordShot()
       ctx.now = performance.now()
       const hit = raycastCenter()
-      if (hit && hit.part !== 'body') kill(hit.target)
-      else rec.recordMiss()
+      if (hit && hit.part !== 'body') {
+        kill(hit.target)
+      } else {
+        if (hit && sound.hit) play('body', volume)
+        rec.recordMiss()
+      }
     }
 
     function onMouseUp(e: MouseEvent): void {
@@ -352,7 +365,7 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
       ctx.now = now
       ctx.elapsedMs = now - startedAt
 
-      rec.recordFrame(pose())
+      rec.recordFrame(pose(), now)
       frame = rec.camPath.length - 1
 
       def.update?.(ctx, state, dtSec)
@@ -367,6 +380,10 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
         const damaged = hit && hit.part !== 'body' ? hit.target : null
         for (const t of targets) setHighlighted(t.hitboxes, t === damaged)
         if (damaged) {
+          if (sound.hit && now - lastTickAt >= TRACK_TICK_MS) {
+            lastTickAt = now
+            play('tick', volume)
+          }
           damaged.hp -= dtSec * 1000
           if (damaged.hp <= 0) kill(damaged)
         }
@@ -525,7 +542,13 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
       </dl>
 
       <div className="button-row">
-        <button className="btn btn-primary" onClick={() => setPhase('running')}>
+        <button
+          className="btn btn-primary"
+          onClick={() => {
+            warmAudio()
+            setPhase('running')
+          }}
+        >
           Começar
         </button>
         <button className="btn btn-ghost" onClick={onAbort}>

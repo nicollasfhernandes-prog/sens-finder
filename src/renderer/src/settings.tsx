@@ -13,6 +13,13 @@ export interface CrosshairSettings {
   outline: boolean
 }
 
+export interface SoundSettings {
+  /** 0 a 100. */
+  volume: number
+  shot: boolean
+  hit: boolean
+}
+
 export interface Settings {
   /** Jogo-alvo: define a unidade de `sens` e a rotação usada nos treinos. */
   game: GameId
@@ -21,6 +28,7 @@ export interface Settings {
   /** FOV como cada jogo mostra, pros jogos que deixam mudar. */
   fovByGame: Partial<Record<GameId, number>>
   crosshair: CrosshairSettings
+  sound: SoundSettings
   targetColor: string
   backgroundColor: string
   wallColor: string
@@ -40,6 +48,7 @@ export const DEFAULT_SETTINGS: Settings = {
     dotSize: 2,
     outline: true
   },
+  sound: { volume: 60, shot: true, hit: true },
   targetColor: '#ff4655',
   backgroundColor: '#0f1923',
   wallColor: '#1a2632'
@@ -58,7 +67,8 @@ function load(): Settings {
     if ((crosshair.style as string) === 'circle') crosshair.style = 'cross-dot'
     crosshair.dotSize = Math.min(crosshair.dotSize, 6)
     const game = parsed.game && parsed.game in GAMES ? parsed.game : DEFAULT_SETTINGS.game
-    return { ...DEFAULT_SETTINGS, ...parsed, game, crosshair }
+    const sound = { ...DEFAULT_SETTINGS.sound, ...parsed.sound }
+    return { ...DEFAULT_SETTINGS, ...parsed, game, crosshair, sound }
   } catch {
     return DEFAULT_SETTINGS
   }
@@ -70,6 +80,7 @@ interface SettingsContextValue {
   /** Troca o jogo-alvo convertendo a sens de treino pra manter os mesmos cm/360°. */
   changeGame: (game: GameId) => void
   updateCrosshair: (patch: Partial<CrosshairSettings>) => void
+  updateSound: (patch: Partial<SoundSettings>) => void
   reset: () => void
 }
 
@@ -94,6 +105,7 @@ export function SettingsProvider({ children }: { children: ReactNode }): JSX.Ele
         s.game === game ? s : { ...s, game, sens: roundSens(convertSens(s.sens, s.game, game), game) }
       ),
     updateCrosshair: (patch) => setSettings((s) => ({ ...s, crosshair: { ...s.crosshair, ...patch } })),
+    updateSound: (patch) => setSettings((s) => ({ ...s, sound: { ...s.sound, ...patch } })),
     reset: () =>
       setSettings((s) => ({ ...DEFAULT_SETTINGS, game: s.game, sens: s.sens, dpi: s.dpi, fovByGame: s.fovByGame }))
   }

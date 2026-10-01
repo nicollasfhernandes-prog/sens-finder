@@ -5,15 +5,17 @@ import TestSuite from './components/TestSuite'
 import FinalResult from './components/FinalResult'
 import TrainingLibrary from './components/TrainingLibrary'
 import SettingsPage from './components/SettingsPage'
+import ProgressPage from './components/ProgressPage'
 import { convertSens, gameCm360, GAMES, heuristicSens } from './lib/sensitivity'
 import { useSettings } from './settings'
 import { AimTestResult, QuestionnaireAnswers, Screen } from './types'
 
-type Section = 'finder' | 'library' | 'settings'
+type Section = 'finder' | 'library' | 'progress' | 'settings'
 
 const NAV: { id: Section; label: string }[] = [
   { id: 'finder', label: 'Sens Finder' },
   { id: 'library', label: 'Treinos' },
+  { id: 'progress', label: 'Progresso' },
   { id: 'settings', label: 'Configurações' }
 ]
 
@@ -122,6 +124,7 @@ export default function App(): JSX.Element {
 
       <main className="stage">
         {section === 'library' && <TrainingLibrary />}
+        {section === 'progress' && <ProgressPage onGoTraining={() => setSection('library')} />}
         {section === 'settings' && <SettingsPage />}
 
         {section === 'finder' && (

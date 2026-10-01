@@ -1,4 +1,5 @@
 import { analyzeFlick, initialFlickAxis, projectOntoAxis } from '../lib/trajectory'
+import { analyzeFlickMotion, FlickMotion, summarizeMotor } from './motor'
 import { FireMode, Pose, ScenarioDef, ScenarioResult, Scoring, Target } from './types'
 
 // Pontuação própria (as fórmulas do Aim Lab não são públicas): Ultimate equilibra velocidade e
@@ -46,6 +47,10 @@ export class MetricsRecorder {
   private underflicks: number[] = []
   private lastResolveFrame = 0
   private lastResolveAt: number
+  /** Horário de cada frame de camPath, já sem o tempo em pausa (pra calcular velocidade). */
+  private readonly camTimes: number[] = []
+  private pausedTotal = 0
+  private readonly motions: FlickMotion[] = []
 
   private trackFrames = 0
   private onFrames = 0
@@ -81,10 +86,12 @@ export class MetricsRecorder {
   /** Desconta um intervalo de pausa, pra ele não contar como tempo até o próximo alvo. */
   shiftTime(ms: number): void {
     this.lastResolveAt += ms
+    this.pausedTotal += ms
   }
 
-  recordFrame(pose: Pose): void {
+  recordFrame(pose: Pose, now: number): void {
     this.camPath.push(pose)
+    this.camTimes.push(now - this.pausedTotal)
   }
 
   recordShot(): void {
@@ -100,12 +107,12 @@ export class MetricsRecorder {
     this.ttks.push(ttk)
     this.kills += 1
     this.score += killPoints(this.scoring, ttk)
-    this.resolve(t, now, frame, pose, radiusDeg)
+    this.resolve(t, now, frame, pose, radiusDeg, true)
   }
 
   recordExpire(t: Target, now: number, frame: number, pose: Pose, radiusDeg: number): void {
     this.score -= EXPIRE_PENALTY[this.scoring]
-    this.resolve(t, now, frame, pose, radiusDeg)
+    this.resolve(t, now, frame, pose, radiusDeg, false)
   }
 
   recordTracking(s: TrackingSample): void {
@@ -130,9 +137,9 @@ export class MetricsRecorder {
     }
   }
 
-  private resolve(t: Target, now: number, frame: number, pose: Pose, radiusDeg: number): void {
+  private resolve(t: Target, now: number, frame: number, pose: Pose, radiusDeg: number, killed: boolean): void {
     this.resolved += 1
-    if (this.mode === 'click') this.analyzeFlick(t, frame, pose, radiusDeg)
+    if (this.mode === 'click') this.analyzeFlick(t, now, frame, pose, radiusDeg, killed)
     this.lastResolveAt = now
     this.lastResolveFrame = frame
   }
@@ -142,7 +149,7 @@ export class MetricsRecorder {
    * depois) contra este alvo — só o flick que o jogador de fato fez até ele. Funciona com alvo
    * em movimento porque usa a posição angular do alvo em cada frame.
    */
-  private analyzeFlick(t: Target, frame: number, pose: Pose, radiusDeg: number): void {
+  private analyzeFlick(t: Target, now: number, frame: number, pose: Pose, radiusDeg: number, killed: boolean): void {
     const from = Math.max(this.lastResolveFrame, t.spawnFrame)
     const cams = this.camPath.slice(from, frame + 1)
     cams.push(pose)
@@ -160,9 +167,18 @@ export class MetricsRecorder {
     const analysis = analyzeFlick(samples, radiusDeg)
     this.overflicks.push(analysis.overflickDeg)
     this.underflicks.push(analysis.underflickDeg)
+
+    // Cinemática só de flicks concluídos: um alvo que expirou não tem fim de movimento.
+    if (killed) {
+      const times = this.camTimes.slice(from, frame + 1)
+      times.push(now - this.pausedTotal)
+      const motion = analyzeFlickMotion(samples, times, radiusDeg)
+      if (motion) this.motions.push(motion)
+    }
   }
 
-  result(def: ScenarioDef<unknown>, elapsedMs: number): ScenarioResult {
+  /** cmPerDeg: centímetros de mousepad por grau de giro, pra mostrar a velocidade da mão. */
+  result(def: ScenarioDef<unknown>, elapsedMs: number, cmPerDeg: number): ScenarioResult {
     const withOver = this.overflicks.filter((v) => v > 0)
     const withUnder = this.underflicks.filter((v) => v > 0)
     const analyzed = this.overflicks.length
@@ -186,6 +202,7 @@ export class MetricsRecorder {
       avgOverflickDeg: avg(withOver),
       underflickRate: analyzed > 0 ? withUnder.length / analyzed : 0,
       avgUnderflickDeg: avg(withUnder),
+      motor: summarizeMotor(this.motions, cmPerDeg),
       tracking:
         this.mode === 'click'
           ? null

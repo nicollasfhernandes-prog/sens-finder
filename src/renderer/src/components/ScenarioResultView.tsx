@@ -3,6 +3,7 @@ import { recommendAdjustment, roundSens } from '../lib/sensitivity'
 import { REFERENCE_TARGET_ANGULAR_RADIUS_DEG } from '../scenarios/sensFinder'
 import { useSettings } from '../settings'
 import { FlickBalance, Recommendation, recommendedSens } from './Analysis'
+import MotorPanel from './MotorPanel'
 
 interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -111,6 +112,16 @@ export default function ScenarioResultView({
           )}
         </Recommendation>
       </div>
+
+      {r.motor ? (
+        <MotorPanel motor={r.motor} />
+      ) : (
+        r.tracking === null && (
+          <p className="fine">
+            A análise de movimento precisa de pelo menos 5 flicks concluídos nesta partida.
+          </p>
+        )
+      )}
 
       <div className="button-row">
         <button className="btn btn-primary" onClick={onPlayAgain}>

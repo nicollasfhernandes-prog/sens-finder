@@ -1,5 +1,6 @@
 import type { AimTestResult } from '../types'
 import type { ScenarioResult } from '../engine/types'
+import { MIN_FLICKS_FOR_STATS } from '../engine/motor'
 
 export type GameId = 'valorant' | 'cs2' | 'apex' | 'overwatch2' | 'cod' | 'fortnite' | 'r6siege'
 
@@ -181,6 +182,9 @@ const TRACKING_WEIGHT = 0.4
 // fica atrás do alvo sem cruzar (sens baixa). Só pesa na proporção do tempo fora do alvo.
 const TRACKING_CROSSINGS_BASELINE = 1
 const HIT_RATE_FLOOR = 0.7
+// Ganho de 125% (ou 75%) no impulso principal já conta como desvio máximo pra um lado.
+const GAIN_FULL_SCALE = 0.25
+const GAIN_TOLERANCE = 0.05
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v))
@@ -231,7 +235,17 @@ export function recommendAdjustment(
   // Frequência × magnitude (em raios de alvo) de cada tipo de erro.
   const overScore = breakdown.overflickRate * (1 + breakdown.avgOverflickDeg / referenceAngularRadiusDeg)
   const underScore = breakdown.underflickRate * (1 + breakdown.avgUnderflickDeg / referenceAngularRadiusDeg)
-  const flickBias = clamp(overScore - underScore, -1, 1)
+  const overUnderBias = clamp(overScore - underScore, -1, 1)
+
+  // Ganho do impulso principal: o sinal mais direto de sens desajustada. Se o primeiro
+  // movimento passa do alvo em média, a mão está calibrada pra uma sens mais baixa.
+  const motionFlicks = results.flatMap((r) => r.motor?.flicks ?? [])
+  const gainMean =
+    motionFlicks.length >= MIN_FLICKS_FOR_STATS
+      ? motionFlicks.reduce((s, f) => s + f.gain, 0) / motionFlicks.length
+      : null
+  const gainBias = gainMean !== null ? clamp((gainMean - 1) / GAIN_FULL_SCALE, -1, 1) : null
+  const flickBias = gainBias !== null ? (overUnderBias + gainBias) / 2 : overUnderBias
 
   const trackBias =
     breakdown.trackingCoverage !== null && breakdown.trackingCrossingsPerSec !== null
@@ -271,6 +285,17 @@ export function recommendAdjustment(
     }
   } else {
     reasons.push('Nenhum overflick ou underflick detectado nos flicks.')
+  }
+
+  if (gainMean !== null) {
+    const g = Math.round(gainMean * 100)
+    if (gainMean > 1 + GAIN_TOLERANCE) {
+      reasons.push(`O impulso principal dos seus flicks percorre em média ${g}% da distância: a mão passa do ponto, sinal de sens alta.`)
+    } else if (gainMean < 1 - GAIN_TOLERANCE) {
+      reasons.push(`O impulso principal dos seus flicks percorre em média ${g}% da distância: a mão para antes, sinal de sens baixa.`)
+    } else {
+      reasons.push(`O impulso principal dos seus flicks percorre em média ${g}% da distância: bem calibrado pra essa sens.`)
+    }
   }
 
   if (trackBias > 0.1) {

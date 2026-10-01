@@ -12,7 +12,8 @@
   --faint: #5f7080;
   --accent: #ff4655;
   --accent-hover: #ff5f6c;
-  --under: #3ad1d8;
+  /* Validado contra --surface com o validador de paleta (CVD ΔE 15 vs --accent). */
+  --under: #1fa3ad;
   --record: #3bffb0;
 
   --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
@@ -737,12 +738,22 @@ select.input {
   line-height: 1;
 }
 
-.is-under .balance-pct {
-  color: var(--under);
+/* O texto fica na cor de texto; a identidade vem do quadradinho colorido ao lado. */
+.balance-pct::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  vertical-align: 0.2em;
 }
 
-.is-over .balance-pct {
-  color: var(--accent);
+.is-under .balance-pct::before {
+  background: var(--under);
+}
+
+.is-over .balance-pct::before {
+  background: var(--accent);
 }
 
 .balance-deg {
@@ -838,6 +849,310 @@ select.input {
 
 .recommendation .button-row {
   margin-top: 18px;
+}
+
+/* ============ Movimento e memória muscular ============ */
+.motor-panel {
+  margin-top: 16px;
+}
+
+.motor-top {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 32px;
+  margin-top: 18px;
+}
+
+.motor-score-value {
+  display: block;
+  font-size: 88px;
+  line-height: 0.95;
+}
+
+.motor-score-label {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 20px;
+}
+
+.motor-meters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 28px;
+}
+
+.meter-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.meter-head .num {
+  font-size: 18px;
+}
+
+.meter-track {
+  height: 6px;
+  margin-top: 6px;
+  background: var(--bg-deep);
+}
+
+.meter-fill {
+  height: 100%;
+  background: var(--text);
+}
+
+.meter-hint {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.motor-kv {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0 24px;
+}
+
+.motor-kv > div {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.motor-charts {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 28px;
+  margin-top: 24px;
+}
+
+.chart-figure {
+  margin: 0;
+}
+
+.chart-title {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.chart-wrap {
+  position: relative;
+}
+
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.chart-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.chart-tick {
+  font-family: var(--font-display);
+  font-size: 12px;
+  fill: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-axis-label {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.chart-dot {
+  fill: var(--text);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.chart-dot.is-under {
+  fill: var(--under);
+}
+
+.chart-dot.is-over {
+  fill: var(--accent);
+}
+
+.chart-dot.is-active {
+  r: 6;
+}
+
+.chart-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+
+g:focus-visible > .chart-dot {
+  stroke: var(--text);
+}
+
+g:focus {
+  outline: none;
+}
+
+.chart-fit {
+  stroke: var(--faint);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.chart-band {
+  fill: var(--surface-2);
+}
+
+.chart-zero {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+
+.chart-line {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart-crosshair {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+
+.chart-tip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 12px));
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--bg-deep);
+  border: 1px solid var(--line-strong);
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.chart-tip strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 17px;
+  color: var(--text);
+}
+
+.flick-table {
+  margin-top: 18px;
+}
+
+.flick-table summary {
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.flick-table summary:hover {
+  color: var(--text);
+}
+
+.flick-table table,
+.data-table {
+  width: 100%;
+  margin-top: 12px;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.flick-table th,
+.data-table th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.flick-table td,
+.data-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.data-table td.num {
+  font-size: 17px;
+}
+
+.data-table tr.is-best td {
+  background: var(--surface-2);
+}
+
+.data-table tr.is-best td:first-child {
+  box-shadow: inset 3px 0 0 var(--text);
+}
+
+/* ============ Progresso ============ */
+.page-wide > .panel + .panel {
+  margin-top: 16px;
+}
+
+.progress-verdict {
+  margin-top: 10px;
+  font-size: 17px;
+}
+
+.progress-verdict .num {
+  font-size: 22px;
+}
+
+.bar-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bar-cell-track {
+  width: 120px;
+  height: 6px;
+  background: var(--bg-deep);
+}
+
+.bar-cell-fill {
+  display: block;
+  height: 100%;
+  background: var(--text);
+}
+
+.muted-cell {
+  color: var(--faint);
+  font-size: 13px;
+}
+
+.link-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.link-btn:hover {
+  color: var(--text);
+}
+
+.empty-state .lede {
+  margin-top: 8px;
 }
 
 /* ============ Library ============ */
@@ -1110,6 +1425,19 @@ input[type='range']:hover::-webkit-slider-thumb {
   margin-top: 22px;
   cursor: pointer;
   font-size: 14px;
+}
+
+.toggle + .toggle {
+  margin-left: 28px;
+}
+
+.sound-test {
+  margin-top: 20px;
+}
+
+.sound-test .btn {
+  font-size: 16px;
+  padding: 9px 16px;
 }
 
 .toggle input {
@@ -1388,8 +1716,14 @@ input[type='range']:hover::-webkit-slider-thumb {
 /* ============ Responsive ============ */
 @media (max-width: 1100px) {
   .settings-layout,
-  .result-grid {
+  .result-grid,
+  .motor-top,
+  .motor-charts {
     grid-template-columns: 1fr;
+  }
+
+  .motor-kv {
+    grid-template-columns: 1fr 1fr;
   }
 
   .preview-col {

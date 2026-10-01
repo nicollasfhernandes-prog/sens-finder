@@ -3,6 +3,7 @@ import ScenarioRunner from '../engine/ScenarioRunner'
 import { ScenarioDef, ScenarioResult } from '../engine/types'
 import { LIBRARY } from '../scenarios/aimlab'
 import { getBest, recordScore, useSettings } from '../settings'
+import { recordSession } from '../lib/history'
 import ScenarioResultView from './ScenarioResultView'
 import SensControl from './SensControl'
 
@@ -38,14 +39,15 @@ export default function TrainingLibrary(): JSX.Element {
         key={`${view.def.id}-${view.run}`}
         def={view.def}
         sens={settings.sens}
-        onComplete={(result) =>
+        onComplete={(result) => {
+          recordSession(result, { game: settings.game, sens: settings.sens, dpi: settings.dpi })
           setView({
             kind: 'result',
             def: view.def,
             result,
             previousBest: recordScore(view.def.id, result.score)
           })
-        }
+        }}
         onAbort={() => setView({ kind: 'list' })}
       />
     )

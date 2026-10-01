@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import type { MotorStats } from './motor'
 
 export type HitPart = 'target' | 'head' | 'body'
 
@@ -89,5 +90,7 @@ export interface ScenarioResult {
   avgOverflickDeg: number
   underflickRate: number
   avgUnderflickDeg: number
+  /** Cinemática dos flicks; null em tracking ou com poucos flicks pra concluir algo. */
+  motor: MotorStats | null
   tracking: TrackingResult | null
 }
