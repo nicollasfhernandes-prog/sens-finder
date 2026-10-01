@@ -16,8 +16,10 @@ Os executáveis não têm assinatura digital. Na primeira vez, o Windows pode mo
 ## O que tem
 
 - **Sens Finder**: questionário, sens inicial convertida de outro jogo ou calculada pelo estilo de mira, e três testes curtos (Flick, Gridshot e Tracking) que ajustam o valor.
-- **Treinos**: cenários inspirados no Aim Lab (Spidershot, Spidershot180, Microshot, Sixshot, Motionshot, Linetrace, Switchtrack, HeadshotReflex e Gridshot). Cada partida analisa overflick e underflick e sugere um ajuste de sens. `R` reinicia o exercício e `Esc` sai.
-- **Configurações**: mira (estilo, cor, espessura, comprimento, espaço, ponto e contorno), cores do alvo, fundo e parede, e o código de perfil de mira pra importar no Valorant.
+- **Treinos**: cenários inspirados no Aim Lab (Spidershot, Spidershot180, Microshot, Sixshot, Motionshot, Linetrace, Switchtrack, HeadshotReflex e Gridshot). Cada partida analisa overflick e underflick e sugere um ajuste de sens. Segure `R` pra reiniciar; `Esc` pausa.
+- **Memória muscular**: cada flick é separado em impulso principal e correções. O app mede a velocidade de pico da mão (cm/s), o tempo de reação, onde o primeiro movimento parou em relação ao alvo e quantas correções vieram depois, e resume tudo num índice de 0 a 100.
+- **Progresso**: histórico das partidas comparando as sens que você já usou, pra mostrar com qual sua mão está mais calibrada.
+- **Configurações**: FOV do jogo, mira (estilo, cor, espessura, comprimento, espaço, ponto e contorno), cores do alvo, fundo e parede, sons de disparo e acerto, e o código de perfil de mira pra importar no Valorant.
 
 ## Como a conversão entre jogos funciona
 
