@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FlickMotion, linearFit, MotorStats } from '../engine/motor'
+import { FlickMotion, linearFit, MotorStats, NEUTRAL_GAIN } from '../engine/motor'
 
 function fmt(n: number, digits = 0): string {
   return n.toFixed(digits).replace('.', ',')
@@ -86,7 +86,17 @@ function SpeedDistanceChart({ flicks, cmPerDeg }: { flicks: FlickMotion[]; cmPer
         <text className="chart-axis-label" transform={`translate(11 ${(PAD.top + H - PAD.bottom) / 2}) rotate(-90)`} textAnchor="middle">
           velocidade de pico (cm/s)
         </text>
-        <line className="chart-fit" x1={sx(x0)} y1={sy(fit.intercept + fit.slope * x0)} x2={sx(x1)} y2={sy(fit.intercept + fit.slope * x1)} />
+        <clipPath id="speed-plot-area">
+          <rect x={PAD.left} y={PAD.top} width={W - PAD.left - PAD.right} height={H - PAD.top - PAD.bottom} />
+        </clipPath>
+        <line
+          className="chart-fit"
+          clipPath="url(#speed-plot-area)"
+          x1={sx(x0)}
+          y1={sy(fit.intercept + fit.slope * x0)}
+          x2={sx(x1)}
+          y2={sy(fit.intercept + fit.slope * x1)}
+        />
         {pts.map((p, i) => (
           <g
             key={i}
@@ -131,7 +141,11 @@ function GainStrip({ flicks }: { flicks: FlickMotion[] }): JSX.Element {
   return (
     <div className="chart-wrap">
       <svg viewBox={`0 0 ${W} ${h}`} className="chart" role="img" aria-label="Ganho do impulso principal de cada flick, em relação a 100%">
-        <rect className="chart-band" x={sx(1 - GAIN_TOL)} y={12} width={sx(1 + GAIN_TOL) - sx(1 - GAIN_TOL)} height={52} />
+        {/* Faixa normal de uma mão calibrada (~92%) e a linha do alvo (100%). */}
+        <rect className="chart-band" x={sx(NEUTRAL_GAIN - GAIN_TOL)} y={12} width={sx(NEUTRAL_GAIN + GAIN_TOL) - sx(NEUTRAL_GAIN - GAIN_TOL)} height={52} />
+        <text className="chart-axis-label" x={sx(NEUTRAL_GAIN)} y={8} textAnchor="middle">
+          normal
+        </text>
         <line className="chart-zero" x1={sx(1)} x2={sx(1)} y1={10} y2={66} />
         {[0.5, 0.75, 1, 1.25, 1.5].map((g) => (
           <text key={g} className="chart-tick" x={sx(g)} y={82} textAnchor="middle">
@@ -145,7 +159,7 @@ function GainStrip({ flicks }: { flicks: FlickMotion[] }): JSX.Element {
           passou do ponto
         </text>
         {flicks.map((f, i) => {
-          const tone = f.gain < 1 - GAIN_TOL ? 'is-under' : f.gain > 1 + GAIN_TOL ? 'is-over' : ''
+          const tone = f.gain < NEUTRAL_GAIN - GAIN_TOL ? 'is-under' : f.gain > NEUTRAL_GAIN + GAIN_TOL ? 'is-over' : ''
           const show = (): void =>
             setTip({
               x: (sx(f.gain) / W) * 100,
@@ -201,7 +215,7 @@ export default function MotorPanel({ motor, title = 'Movimento e memória muscul
           <Meter
             label="Precisão do impulso"
             value={c.accuracy}
-            hint={`O primeiro movimento percorre em média ${fmt(motor.gainMean * 100)}% da distância até o alvo.`}
+            hint={`O primeiro movimento percorre em média ${fmt(motor.gainMean * 100)}% da distância. O normal é uns 92%: a mão para um pouco antes e corrige.`}
           />
           <Meter
             label="Consistência"
@@ -253,7 +267,7 @@ export default function MotorPanel({ motor, title = 'Movimento e memória muscul
         <figure className="chart-figure">
           <figcaption className="chart-title">Onde o impulso principal parou</figcaption>
           <GainStrip flicks={motor.flicks} />
-          <p className="fine">Pontos juntos em volta de 100%: o primeiro movimento já cai no alvo, sempre igual.</p>
+          <p className="fine">Pontos juntos na faixa normal: o primeiro movimento cai sempre no mesmo lugar, logo antes do alvo.</p>
         </figure>
       </div>
 

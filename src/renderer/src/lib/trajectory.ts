@@ -67,6 +67,10 @@ const STALL_VELOCITY_DEG = 0.06
 const STALL_MIN_SAMPLES = 5
 const MOVE_START_MIN_DEG = 0.5
 const MOVE_START_FRACTION = 0.1
+// O impulso principal humano para naturalmente uns 5–10% antes do alvo e uma correção curta
+// fecha o resto (modelo de dois componentes, Elliott et al.). Parar até 15% antes é normal;
+// só conta como underflick quem para mais longe que isso.
+const NORMAL_UNDERSHOOT_FRACTION = 0.15
 
 /**
  * samples: valores de `r` (distância restante projetada, com sinal) amostrados quadro a
@@ -78,6 +82,7 @@ export function analyzeFlick(samples: number[], targetRadiusDeg: number): FlickA
 
   const r0 = samples[0]
   const moveThreshold = Math.max(MOVE_START_MIN_DEG, Math.abs(r0) * MOVE_START_FRACTION)
+  const shortThreshold = Math.max(targetRadiusDeg, Math.abs(r0) * NORMAL_UNDERSHOOT_FRACTION)
 
   let minR = r0
   let started = false
@@ -95,7 +100,7 @@ export function analyzeFlick(samples: number[], targetRadiusDeg: number): FlickA
     }
 
     const dr = Math.abs(r - samples[i - 1])
-    if (dr < STALL_VELOCITY_DEG && r > targetRadiusDeg) {
+    if (dr < STALL_VELOCITY_DEG && r > shortThreshold) {
       stallRun += 1
       if (stallRun >= STALL_MIN_SAMPLES) {
         underflickDeg = Math.max(underflickDeg, r - targetRadiusDeg)

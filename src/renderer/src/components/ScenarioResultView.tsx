@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { ScenarioDef, ScenarioResult } from '../engine/types'
-import { recommendAdjustment, roundSens } from '../lib/sensitivity'
+import { BATTERY_MIN_FLICKS, BATTERY_MIN_SESSIONS, currentBattery, loadHistory } from '../lib/history'
+import { evidenceOf, recommendAdjustment, roundSens } from '../lib/sensitivity'
 import { REFERENCE_TARGET_ANGULAR_RADIUS_DEG } from '../scenarios/sensFinder'
 import { useSettings } from '../settings'
-import { FlickBalance, Recommendation, recommendedSens } from './Analysis'
+import { BatteryProgress, FlickBalance, Recommendation, recommendedSens } from './Analysis'
 import MotorPanel from './MotorPanel'
 
 interface Props {
@@ -34,8 +36,11 @@ export default function ScenarioResultView({
   onBack
 }: Props): JSX.Element {
   const { settings } = useSettings()
-  const adjustment = recommendAdjustment([r], REFERENCE_TARGET_ANGULAR_RADIUS_DEG)
-  const recommended = recommendedSens(sens, adjustment, settings.game)
+  // Esta partida, pro painel "Como você mirou"; a recomendação vem da bateria inteira.
+  const thisGame = recommendAdjustment([evidenceOf(r)], REFERENCE_TARGET_ANGULAR_RADIUS_DEG)
+  const [battery] = useState(() => currentBattery(loadHistory(), settings.game, settings.dpi, sens))
+  const adjustment = battery.ready ? recommendAdjustment(battery.evidence, REFERENCE_TARGET_ANGULAR_RADIUS_DEG) : null
+  const recommended = adjustment ? recommendedSens(sens, adjustment, settings.game) : roundSens(sens, settings.game)
   const changed = recommended !== roundSens(sens, settings.game)
   const isRecord = previousBest !== null && r.score > previousBest
 
@@ -79,7 +84,7 @@ export default function ScenarioResultView({
       <div className="result-grid">
         <section className="panel">
           <h2 className="panel-title">Como você mirou</h2>
-          {r.flicksAnalyzed > 0 && <FlickBalance b={adjustment.breakdown} />}
+          {r.flicksAnalyzed > 0 && <FlickBalance b={thisGame.breakdown} />}
           {r.tracking && (
             <dl className="kv">
               <div>
@@ -98,19 +103,29 @@ export default function ScenarioResultView({
           )}
         </section>
 
-        <Recommendation
-          currentSens={sens}
-          game={settings.game}
-          dpi={settings.dpi}
-          adjustment={adjustment}
-          note="Uma partida é pouca amostra. Confirme em duas ou três antes de mudar no jogo."
-        >
-          {changed && (
-            <button className="btn btn-ghost" onClick={() => onPlayWithSens(recommended)}>
-              Jogar com {recommended}
-            </button>
-          )}
-        </Recommendation>
+        {adjustment ? (
+          <Recommendation
+            currentSens={sens}
+            game={settings.game}
+            dpi={settings.dpi}
+            adjustment={adjustment}
+            note={`Baseada nas suas últimas ${battery.sessions} partidas com ${roundSens(sens, settings.game)} (${battery.flicks} flicks). Se mudar de sens, a contagem recomeça.`}
+          >
+            {changed && (
+              <button className="btn btn-ghost" onClick={() => onPlayWithSens(recommended)}>
+                Jogar com {recommended}
+              </button>
+            )}
+          </Recommendation>
+        ) : (
+          <BatteryProgress
+            sessions={battery.sessions}
+            needed={BATTERY_MIN_SESSIONS}
+            flicks={battery.flicks}
+            neededFlicks={BATTERY_MIN_FLICKS}
+            sens={roundSens(sens, settings.game)}
+          />
+        )}
       </div>
 
       {r.motor ? (

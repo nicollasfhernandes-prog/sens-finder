@@ -847,6 +847,40 @@ select.input {
   color: var(--faint);
 }
 
+.battery-count {
+  margin-top: 14px;
+  font-size: 17px;
+}
+
+.battery-count .num {
+  font-size: 30px;
+}
+
+.battery-steps {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.battery-steps span {
+  height: 8px;
+  background: var(--bg-deep);
+  border: 1px solid var(--line-strong);
+}
+
+.battery-steps span.is-done {
+  background: var(--text);
+  border-color: var(--text);
+}
+
+.battery-text {
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
 .recommendation .button-row {
   margin-top: 18px;
 }

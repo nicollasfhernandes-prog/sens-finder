@@ -1,6 +1,6 @@
 import type { AimTestResult } from '../types'
 import type { ScenarioResult } from '../engine/types'
-import { MIN_FLICKS_FOR_STATS } from '../engine/motor'
+import { MIN_FLICKS_FOR_STATS, NEUTRAL_GAIN } from '../engine/motor'
 
 export type GameId = 'valorant' | 'cs2' | 'apex' | 'overwatch2' | 'cod' | 'fortnite' | 'r6siege'
 
@@ -156,6 +156,43 @@ export function roundSens(sens: number, game: GameId = 'valorant'): number {
   return Math.max(1 / f, Math.round(sens * f) / f)
 }
 
+/**
+ * Resumo de uma partida que dá pra somar com outras e guardar no histórico. A recomendação é
+ * calculada sobre um conjunto de evidências (uma bateria), não sobre uma partida isolada.
+ */
+export interface Evidence {
+  flicksAnalyzed: number
+  overflickRate: number
+  avgOverflickDeg: number
+  underflickRate: number
+  avgUnderflickDeg: number
+  /** Só cenários de clique; null em tracking. */
+  shots: number | null
+  kills: number
+  targetsResolved: number
+  tracking: { coverage: number; crossingsPerSec: number } | null
+  motorFlicks: number
+  gainMean: number | null
+  gainSd: number | null
+}
+
+export function evidenceOf(r: ScenarioResult): Evidence {
+  return {
+    flicksAnalyzed: r.flicksAnalyzed,
+    overflickRate: r.overflickRate,
+    avgOverflickDeg: r.avgOverflickDeg,
+    underflickRate: r.underflickRate,
+    avgUnderflickDeg: r.avgUnderflickDeg,
+    shots: r.tracking === null ? r.shots : null,
+    kills: r.kills,
+    targetsResolved: r.targetsResolved,
+    tracking: r.tracking ? { coverage: r.tracking.coverage, crossingsPerSec: r.tracking.crossingsPerSec } : null,
+    motorFlicks: r.motor?.flicks.length ?? 0,
+    gainMean: r.motor?.gainMean ?? null,
+    gainSd: r.motor?.gainSd ?? null
+  }
+}
+
 export interface AdjustmentBreakdown {
   flicksAnalyzed: number
   overflickRate: number
@@ -166,6 +203,8 @@ export interface AdjustmentBreakdown {
   hitRate: number | null
   trackingCoverage: number | null
   trackingCrossingsPerSec: number | null
+  gainMean: number | null
+  motorFlicks: number
 }
 
 export interface AdjustmentSuggestion {
@@ -182,9 +221,11 @@ const TRACKING_WEIGHT = 0.4
 // fica atrás do alvo sem cruzar (sens baixa). Só pesa na proporção do tempo fora do alvo.
 const TRACKING_CROSSINGS_BASELINE = 1
 const HIT_RATE_FLOOR = 0.7
-// Ganho de 125% (ou 75%) no impulso principal já conta como desvio máximo pra um lado.
-const GAIN_FULL_SCALE = 0.25
-const GAIN_TOLERANCE = 0.05
+const GAIN_TOLERANCE = 0.03
+// O impulso principal é o sinal mais direto; overflick/underflick entram como reforço.
+const GAIN_SIGNAL_WEIGHT = 0.65
+// Alguns over/underflicks são normais; só o desequilíbrio acima disso conta.
+const RATE_TOLERANCE = 0.08
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v))
@@ -194,58 +235,65 @@ function pct(v: number): string {
   return `${Math.round(v * 100)}%`
 }
 
-function weighted(results: ScenarioResult[], pickValue: (r: ScenarioResult) => number): number {
-  const total = results.reduce((s, r) => s + r.flicksAnalyzed, 0)
-  return total > 0 ? results.reduce((s, r) => s + pickValue(r) * r.flicksAnalyzed, 0) / total : 0
+/** Encolhe o desvio pela tolerância: dentro da faixa vira 0, fora dela conta só o excedente. */
+function beyond(dev: number, tolerance: number): number {
+  return Math.sign(dev) * Math.max(0, Math.abs(dev) - tolerance)
+}
+
+function weighted(items: Evidence[], pick: (e: Evidence) => number, weight: (e: Evidence) => number): number {
+  const total = items.reduce((s, e) => s + weight(e), 0)
+  return total > 0 ? items.reduce((s, e) => s + pick(e) * weight(e), 0) / total : 0
 }
 
 /**
- * Ajuste contínuo no estilo do Sens Finder do Aim Lab: compara o quanto você passa do alvo
- * (overflick) com o quanto fica curto (underflick). Se o overflick domina, a sens desce; se o
- * underflick domina, sobe — proporcional ao desequilíbrio, limitado a ±15% por rodada.
- * Aceita qualquer combinação de cenários: flick, tracking ou os dois.
+ * Ajuste contínuo a partir de várias partidas: compara o quanto você passa do alvo com o quanto
+ * fica curto além do normal humano, e onde o impulso principal para em relação aos ~92% típicos.
+ * Desvios dentro da margem de ruído da amostra não contam. Limitado a ±15% por bateria.
  */
-export function recommendAdjustment(
-  results: ScenarioResult[],
-  referenceAngularRadiusDeg: number
-): AdjustmentSuggestion {
-  const flickResults = results.filter((r) => r.flicksAnalyzed > 0)
-  const clickResults = results.filter((r) => r.tracking === null)
-  const trackResults = results.flatMap((r) => (r.tracking ? [r.tracking] : []))
+export function recommendAdjustment(evidence: Evidence[], referenceAngularRadiusDeg: number): AdjustmentSuggestion {
+  const flick = evidence.filter((e) => e.flicksAnalyzed > 0)
+  const click = evidence.filter((e) => e.shots !== null)
+  const track = evidence.flatMap((e) => (e.tracking ? [e.tracking] : []))
+  const motor = evidence.filter((e) => e.gainMean !== null && e.motorFlicks > 0)
 
-  const attempts = clickResults.reduce((s, r) => s + r.shots + (r.targetsResolved - r.kills), 0)
-  const kills = clickResults.reduce((s, r) => s + r.kills, 0)
+  const attempts = click.reduce((s, e) => s + (e.shots ?? 0) + (e.targetsResolved - e.kills), 0)
+  const kills = click.reduce((s, e) => s + e.kills, 0)
+  const motorFlicks = motor.reduce((s, e) => s + e.motorFlicks, 0)
+  const byFlicks = (e: Evidence): number => e.flicksAnalyzed
+  const byMotor = (e: Evidence): number => e.motorFlicks
 
   const breakdown: AdjustmentBreakdown = {
-    flicksAnalyzed: flickResults.reduce((s, r) => s + r.flicksAnalyzed, 0),
-    overflickRate: weighted(flickResults, (r) => r.overflickRate),
-    avgOverflickDeg: weighted(flickResults, (r) => r.avgOverflickDeg),
-    underflickRate: weighted(flickResults, (r) => r.underflickRate),
-    avgUnderflickDeg: weighted(flickResults, (r) => r.avgUnderflickDeg),
+    flicksAnalyzed: flick.reduce((s, e) => s + e.flicksAnalyzed, 0),
+    overflickRate: weighted(flick, (e) => e.overflickRate, byFlicks),
+    avgOverflickDeg: weighted(flick, (e) => e.avgOverflickDeg, byFlicks),
+    underflickRate: weighted(flick, (e) => e.underflickRate, byFlicks),
+    avgUnderflickDeg: weighted(flick, (e) => e.avgUnderflickDeg, byFlicks),
     // Acertos sobre tentativas: tiros errados e alvos que expiraram contam contra.
-    hitRate: clickResults.length > 0 ? kills / Math.max(attempts, 1) : null,
-    trackingCoverage:
-      trackResults.length > 0 ? trackResults.reduce((s, t) => s + t.coverage, 0) / trackResults.length : null,
-    trackingCrossingsPerSec:
-      trackResults.length > 0
-        ? trackResults.reduce((s, t) => s + t.crossingsPerSec, 0) / trackResults.length
-        : null
+    hitRate: click.length > 0 ? kills / Math.max(attempts, 1) : null,
+    trackingCoverage: track.length > 0 ? track.reduce((s, t) => s + t.coverage, 0) / track.length : null,
+    trackingCrossingsPerSec: track.length > 0 ? track.reduce((s, t) => s + t.crossingsPerSec, 0) / track.length : null,
+    gainMean: motorFlicks >= MIN_FLICKS_FOR_STATS ? weighted(motor, (e) => e.gainMean!, byMotor) : null,
+    motorFlicks
   }
 
   // Frequência × magnitude (em raios de alvo) de cada tipo de erro.
   const overScore = breakdown.overflickRate * (1 + breakdown.avgOverflickDeg / referenceAngularRadiusDeg)
   const underScore = breakdown.underflickRate * (1 + breakdown.avgUnderflickDeg / referenceAngularRadiusDeg)
-  const overUnderBias = clamp(overScore - underScore, -1, 1)
+  const overUnderBias = clamp(beyond(overScore - underScore, RATE_TOLERANCE), -1, 1)
 
-  // Ganho do impulso principal: o sinal mais direto de sens desajustada. Se o primeiro
-  // movimento passa do alvo em média, a mão está calibrada pra uma sens mais baixa.
-  const motionFlicks = results.flatMap((r) => r.motor?.flicks ?? [])
-  const gainMean =
-    motionFlicks.length >= MIN_FLICKS_FOR_STATS
-      ? motionFlicks.reduce((s, f) => s + f.gain, 0) / motionFlicks.length
-      : null
-  const gainBias = gainMean !== null ? clamp((gainMean - 1) / GAIN_FULL_SCALE, -1, 1) : null
-  const flickBias = gainBias !== null ? (overUnderBias + gainBias) / 2 : overUnderBias
+  // Impulso principal contra o neutro humano, descontando o erro padrão da média: com poucos
+  // flicks ou muita variação, o desvio precisa ser maior pra contar.
+  // Se a mão percorre `g` da distância com essa sens, multiplicar a sens por NEUTRO/g leva o
+  // mesmo movimento de mão pro ponto neutro; o viés é esse ajuste em unidades de MAX_ADJUST.
+  let gainBias: number | null = null
+  if (breakdown.gainMean !== null) {
+    const sd = weighted(motor, (e) => e.gainSd ?? 0, byMotor)
+    const standardError = sd / Math.sqrt(motorFlicks)
+    const effectiveGain = NEUTRAL_GAIN + beyond(breakdown.gainMean - NEUTRAL_GAIN, GAIN_TOLERANCE + 2 * standardError)
+    gainBias = clamp((1 - NEUTRAL_GAIN / effectiveGain) / MAX_ADJUST, -1, 1)
+  }
+  const flickBias =
+    gainBias !== null ? GAIN_SIGNAL_WEIGHT * gainBias + (1 - GAIN_SIGNAL_WEIGHT) * overUnderBias : overUnderBias
 
   const trackBias =
     breakdown.trackingCoverage !== null && breakdown.trackingCrossingsPerSec !== null
@@ -269,39 +317,37 @@ export function recommendAdjustment(
   if (Math.abs(multiplier - 1) < DEADZONE) multiplier = 1
 
   const reasons: string[] = []
-  if (!hasFlick) {
-    // Cenário só de tracking: não há flick pra comentar.
-  } else if (breakdown.overflickRate > 0 || breakdown.underflickRate > 0) {
-    if (overScore > underScore) {
+  if (hasFlick) {
+    if (overUnderBias > 0) {
       reasons.push(
-        `Você passou do alvo em ${pct(breakdown.overflickRate)} dos flicks e ficou curto em ${pct(breakdown.underflickRate)} — tendência de sens alta.`
+        `Você passou do alvo em ${pct(breakdown.overflickRate)} dos flicks e ficou curto além do normal em ${pct(breakdown.underflickRate)}: tendência de sens alta.`
       )
-    } else if (underScore > overScore) {
+    } else if (overUnderBias < 0) {
       reasons.push(
-        `Você ficou curto em ${pct(breakdown.underflickRate)} dos flicks e passou do alvo em ${pct(breakdown.overflickRate)} — tendência de sens baixa.`
+        `Você ficou curto além do normal em ${pct(breakdown.underflickRate)} dos flicks e passou do alvo em ${pct(breakdown.overflickRate)}: tendência de sens baixa.`
       )
     } else {
-      reasons.push('Overflicks e underflicks equilibrados nos flicks.')
+      reasons.push(
+        `Passou do alvo em ${pct(breakdown.overflickRate)} e ficou curto em ${pct(breakdown.underflickRate)} dos flicks: dentro do normal.`
+      )
     }
-  } else {
-    reasons.push('Nenhum overflick ou underflick detectado nos flicks.')
   }
 
-  if (gainMean !== null) {
-    const g = Math.round(gainMean * 100)
-    if (gainMean > 1 + GAIN_TOLERANCE) {
-      reasons.push(`O impulso principal dos seus flicks percorre em média ${g}% da distância: a mão passa do ponto, sinal de sens alta.`)
-    } else if (gainMean < 1 - GAIN_TOLERANCE) {
-      reasons.push(`O impulso principal dos seus flicks percorre em média ${g}% da distância: a mão para antes, sinal de sens baixa.`)
+  if (breakdown.gainMean !== null && gainBias !== null) {
+    const g = Math.round(breakdown.gainMean * 100)
+    if (gainBias > 0) {
+      reasons.push(`O impulso principal percorre em média ${g}% da distância, acima dos ~92% típicos: a mão passa do ponto, sinal de sens alta.`)
+    } else if (gainBias < 0) {
+      reasons.push(`O impulso principal percorre em média ${g}% da distância, abaixo dos ~92% típicos: a mão para cedo demais, sinal de sens baixa.`)
     } else {
-      reasons.push(`O impulso principal dos seus flicks percorre em média ${g}% da distância: bem calibrado pra essa sens.`)
+      reasons.push(`O impulso principal percorre em média ${g}% da distância, perto dos ~92% típicos de uma mão calibrada.`)
     }
   }
 
   if (trackBias > 0.1) {
-    reasons.push('No tracking sua mira ficou oscilando de um lado pro outro do alvo — sinal de sens alta.')
+    reasons.push('No tracking sua mira ficou oscilando de um lado pro outro do alvo: sinal de sens alta.')
   } else if (trackBias < -0.1) {
-    reasons.push('No tracking sua mira ficou atrás do alvo sem alcançá-lo — sinal de sens baixa.')
+    reasons.push('No tracking sua mira ficou atrás do alvo sem alcançá-lo: sinal de sens baixa.')
   }
 
   if (missPenalty > 0 && breakdown.hitRate !== null) {
@@ -309,12 +355,12 @@ export function recommendAdjustment(
   }
 
   if (reasons.length === 0) {
-    reasons.push('Tracking equilibrado — nenhum sinal claro pra subir ou descer.')
+    reasons.push('Tracking equilibrado: nenhum sinal claro pra subir ou descer.')
   }
 
   return { multiplier, reasons, breakdown }
 }
 
 export function suggestAdjustment(result: AimTestResult, referenceAngularRadiusDeg: number): AdjustmentSuggestion {
-  return recommendAdjustment([result.flick, result.gridshot, result.tracking], referenceAngularRadiusDeg)
+  return recommendAdjustment([result.flick, result.gridshot, result.tracking].map(evidenceOf), referenceAngularRadiusDeg)
 }

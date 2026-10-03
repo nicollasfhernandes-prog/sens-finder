@@ -41,6 +41,12 @@ const MIN_ONSET_SPEED = 20
 const PRIMARY_END_FRACTION = 0.1
 const CORRECTION_PEAK_FRACTION = 0.15
 export const MIN_FLICKS_FOR_STATS = 5
+/**
+ * Onde o impulso principal de uma mão calibrada costuma parar: um pouco antes do alvo, de
+ * propósito — corrigir pra frente custa menos que voltar (modelo de dois componentes,
+ * Elliott et al.). É o ponto neutro da análise, não 100%.
+ */
+export const NEUTRAL_GAIN = 0.92
 
 function mean(v: number[]): number {
   return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0
@@ -156,7 +162,7 @@ export function summarizeMotor(flicks: FlickMotion[], cmPerDeg: number): MotorSt
 
   // Componentes de 0 a 1. Limites escolhidos pra que um jogador consistente fique perto de 1.
   const components = {
-    accuracy: clamp01(1 - Math.abs(gainMean - 1) / 0.3),
+    accuracy: clamp01(1 - Math.abs(gainMean - NEUTRAL_GAIN) / 0.3),
     consistency: clamp01(1 - gainSd / 0.25),
     scaling: speedDistanceR2,
     efficiency: clamp01(1 - correctionsMean / 2)

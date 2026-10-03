@@ -141,7 +141,10 @@ export default function ProgressPage({ onGoTraining }: Props): JSX.Element {
             ) : best ? (
               <p className="progress-verdict">
                 Com <span className="num">{best.sens}</span>, índice médio <span className="num">{fmt(best.motorScore!)}</span>{' '}
-                em {best.motorSessions} partidas. Jogue com outra sens pra comparar.
+                em {best.motorSessions} partidas.{' '}
+                {bySens.length > 1
+                  ? `Jogue pelo menos ${MIN_SESSIONS_FOR_VERDICT} partidas com as outras sens pra comparar.`
+                  : 'Jogue com outra sens pra comparar.'}
               </p>
             ) : (
               <p className="fine">
@@ -193,8 +196,8 @@ export default function ProgressPage({ onGoTraining }: Props): JSX.Element {
               </tbody>
             </table>
             <p className="fine">
-              Impulso principal perto de 100% e variação baixa significam que o primeiro movimento já cai no alvo, sempre
-              igual. É isso que a memória muscular faz.
+              Impulso principal perto de 92% e variação baixa significam que o primeiro movimento para sempre no mesmo
+              ponto, logo antes do alvo, e uma correção curta fecha. É isso que a memória muscular faz.
             </p>
           </section>
 

@@ -56,6 +56,8 @@ function FinderProgress({ screen }: { screen: Screen }): JSX.Element {
 export default function App(): JSX.Element {
   const { settings, update, changeGame } = useSettings()
   const [section, setSection] = useState<Section>('finder')
+  // Muda a cada clique no menu: clicar em "Treinos" de dentro de um resultado volta pra lista.
+  const [navClicks, setNavClicks] = useState(0)
   const [screen, setScreen] = useState<Screen>('intro')
   const [answers, setAnswers] = useState<QuestionnaireAnswers | null>(null)
   const [baseSens, setBaseSens] = useState(0.4)
@@ -106,7 +108,10 @@ export default function App(): JSX.Element {
               key={item.id}
               className={`nav-item${section === item.id ? ' is-active' : ''}`}
               aria-current={section === item.id ? 'page' : undefined}
-              onClick={() => setSection(item.id)}
+              onClick={() => {
+                setSection(item.id)
+                setNavClicks((n) => n + 1)
+              }}
             >
               {item.label}
             </button>
@@ -123,7 +128,7 @@ export default function App(): JSX.Element {
       </aside>
 
       <main className="stage">
-        {section === 'library' && <TrainingLibrary />}
+        {section === 'library' && <TrainingLibrary key={navClicks} />}
         {section === 'progress' && <ProgressPage onGoTraining={() => setSection('library')} />}
         {section === 'settings' && <SettingsPage />}
 

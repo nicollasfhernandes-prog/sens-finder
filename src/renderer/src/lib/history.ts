@@ -1,5 +1,5 @@
 import type { ScenarioResult } from '../engine/types'
-import { GameId, roundSens } from './sensitivity'
+import { Evidence, evidenceOf, GameId, roundSens } from './sensitivity'
 
 export interface SessionRecord {
   at: number
@@ -19,6 +19,8 @@ export interface SessionRecord {
     reactionMs: number
     flicks: number
   } | null
+  /** Resumo usado pela recomendação em bateria (ausente em partidas de versões antigas). */
+  evidence?: Evidence
 }
 
 const KEY = 'vsf.history.v1'
@@ -52,13 +54,46 @@ export function recordSession(r: ScenarioResult, ctx: { game: GameId; sens: numb
           reactionMs: r.motor.avgReactionMs,
           flicks: r.motor.flicks.length
         }
-      : null
+      : null,
+    evidence: evidenceOf(r)
   }
   const all = [...loadHistory(), record].slice(-MAX_SESSIONS)
   try {
     localStorage.setItem(KEY, JSON.stringify(all))
   } catch {
     // Sem storage: o histórico não persiste, mas a partida segue normal.
+  }
+}
+
+/** Partidas necessárias com a mesma sens antes de recomendar, e quantas no máximo entram. */
+export const BATTERY_MIN_SESSIONS = 3
+const BATTERY_MAX_SESSIONS = 5
+export const BATTERY_MIN_FLICKS = 60
+
+export interface Battery {
+  evidence: Evidence[]
+  sessions: number
+  flicks: number
+  ready: boolean
+}
+
+/**
+ * Junta as partidas mais recentes jogadas com esta sens (mesmo jogo e DPI). Trocar de sens
+ * começa uma bateria nova — por isso a recomendação não se acumula partida após partida.
+ */
+export function currentBattery(records: SessionRecord[], game: GameId, dpi: number, sens: number): Battery {
+  const target = roundSens(sens, game)
+  const same = records
+    .filter((r) => r.evidence && r.game === game && r.dpi === dpi && r.sens === target)
+    .slice(-BATTERY_MAX_SESSIONS)
+  const evidence = same.map((r) => r.evidence!)
+  const flicks = evidence.reduce((s, e) => s + e.flicksAnalyzed, 0)
+  const trackingOnly = evidence.length > 0 && evidence.every((e) => e.flicksAnalyzed === 0)
+  return {
+    evidence,
+    sessions: evidence.length,
+    flicks,
+    ready: evidence.length >= BATTERY_MIN_SESSIONS && (flicks >= BATTERY_MIN_FLICKS || trackingOnly)
   }
 }
 

@@ -87,7 +87,8 @@ function microshot(variant: 'Ultimate' | 'Precision'): ScenarioDef<MicroState> {
       if (t.tag === 'center') {
         const position = CENTER.clone()
         for (let attempt = 0; attempt < 12; attempt++) {
-          position.set(CENTER.x + rand(-3.5, 3.5), CENTER.y + rand(-2, 2), CENTER.z)
+          // Até 1,5 abaixo do centro (altura 2,0): mais que isso o alvo encosta no piso.
+          position.set(CENTER.x + rand(-3.5, 3.5), CENTER.y + rand(-1.5, 2), CENTER.z)
           if (position.distanceTo(CENTER) >= 1.2) break
         }
         ctx.spawn({ position, radius: sideRadius, lifetimeMs: s.lifeMs, tag: 'side' })

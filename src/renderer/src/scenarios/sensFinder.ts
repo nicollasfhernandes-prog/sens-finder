@@ -42,7 +42,8 @@ export const sensFinderFlick: ScenarioDef<FlickState> = {
   onExpire: spawnFlick
 }
 
-const GRID_CELLS = wallGrid(3, 3, 2.4, 1.8, CENTER_Y + 0.6)
+// Fileiras em 0,8 / 2,3 / 3,8: a de baixo fica inteira acima do piso (raio do alvo 0,55).
+const GRID_CELLS = wallGrid(3, 3, 2.4, 1.5, CENTER_Y + 0.7)
 
 export function gridshot(id: string, name: string, variant: 'Ultimate' | 'Standard', durationMs: number): ScenarioDef<null> {
   return {

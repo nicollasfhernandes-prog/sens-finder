@@ -44,6 +44,37 @@ export function FlickBalance({ b }: { b: AdjustmentBreakdown }): JSX.Element {
   )
 }
 
+/** Enquanto a bateria de partidas com a mesma sens não fecha, mostra o progresso no lugar da recomendação. */
+interface BatteryProgressProps {
+  sessions: number
+  needed: number
+  flicks: number
+  neededFlicks: number
+  sens: number
+}
+
+export function BatteryProgress({ sessions, needed, flicks, neededFlicks, sens }: BatteryProgressProps): JSX.Element {
+  const left = Math.max(0, needed - sessions)
+  return (
+    <section className="panel recommendation">
+      <h2 className="panel-title">Sensibilidade recomendada</h2>
+      <p className="battery-count">
+        <span className="num">{Math.min(sessions, needed)}</span> de {needed} partidas com <span className="num">{sens}</span>
+      </p>
+      <div className="battery-steps" aria-hidden="true">
+        {Array.from({ length: needed }, (_, i) => (
+          <span key={i} className={i < sessions ? 'is-done' : undefined} />
+        ))}
+      </div>
+      <p className="battery-text">
+        {left > 0
+          ? `Jogue mais ${left} ${left === 1 ? 'partida' : 'partidas'} de qualquer treino com essa sens. A recomendação junta várias partidas porque uma só varia demais pra decidir.`
+          : `As partidas tiveram poucos flicks pra concluir: ${flicks} de ${neededFlicks}. Jogue mais um treino de flick com essa sens.`}
+      </p>
+    </section>
+  )
+}
+
 interface RecommendationProps {
   currentSens: number
   game: GameId
