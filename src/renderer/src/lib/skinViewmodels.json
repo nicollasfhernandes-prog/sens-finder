@@ -1,0 +1,542 @@
+{
+ "1df79598-42a0-a433-0aa5-c79047c32779": {
+  "weapon": "vandal",
+  "name": "Aemondir Vandal",
+  "file": "vandal-1df79598.webp",
+  "box": [
+   0.5271,
+   0.5343,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.994
+  ]
+ },
+ "1cb0bdf7-46e1-92d5-b400-988c99f25d81": {
+  "weapon": "phantom",
+  "name": "Araxys Phantom",
+  "file": "phantom-1cb0bdf7.webp",
+  "box": [
+   0.5339,
+   0.5324,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.994
+  ]
+ },
+ "4ccb9517-4762-eb45-1242-7ca667223459": {
+  "weapon": "vandal",
+  "name": "Arcane Vandal",
+  "file": "vandal-4ccb9517.webp",
+  "box": [
+   0.5531,
+   0.5315,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.928
+  ]
+ },
+ "a810ec6b-46e7-767d-7186-2cbe49e7fe1b": {
+  "weapon": "vandal",
+  "name": "Black.Market Vandal",
+  "file": "vandal-a810ec6b.webp",
+  "box": [
+   0.5109,
+   0.5454,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.952
+  ]
+ },
+ "9bf19b77-4b33-7203-9f2c-16932970622f": {
+  "weapon": "vandal",
+  "name": "Champions 2021 Vandal",
+  "file": "vandal-9bf19b77.webp",
+  "box": [
+   0.5547,
+   0.5444,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.989
+  ]
+ },
+ "b0f65660-4c51-13b7-9d01-e29a1e2879b0": {
+  "weapon": "vandal",
+  "name": "Champions 2023 Vandal",
+  "file": "vandal-b0f65660.webp",
+  "box": [
+   0.55,
+   0.5389,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.994
+  ]
+ },
+ "cc1da8cd-452f-a007-0bf8-b68a471c3a6e": {
+  "weapon": "phantom",
+  "name": "Champions 2024 Phantom",
+  "file": "phantom-cc1da8cd.webp",
+  "box": [
+   0.5417,
+   0.5435,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.993
+  ]
+ },
+ "fac695ab-40d4-e97e-2319-a8bab4dcb610": {
+  "weapon": "phantom",
+  "name": "Combat Crafts Phantom",
+  "file": "phantom-fac695ab.webp",
+  "box": [
+   0.5401,
+   0.5398,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.977
+  ]
+ },
+ "8b688de6-42d3-9430-8f38-32b0b3d1c2c6": {
+  "weapon": "vandal",
+  "name": "Crimsonbeast Vandal",
+  "file": "vandal-8b688de6.webp",
+  "box": [
+   0.5474,
+   0.537,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.995
+  ]
+ },
+ "f328add7-4710-ab8d-95bb-409bc8278a35": {
+  "weapon": "vandal",
+  "name": "Cryostasis Vandal",
+  "file": "vandal-f328add7.webp",
+  "box": [
+   0.5375,
+   0.538,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.993
+  ]
+ },
+ "59032dea-4759-1768-74c9-3796a69a0e32": {
+  "weapon": "vandal",
+  "name": "EX.O Vandal",
+  "file": "vandal-59032dea.webp",
+  "box": [
+   0.5026,
+   0.5435,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.994
+  ]
+ },
+ "7ae63121-4cf0-b4db-00ed-eb8ef05572b1": {
+  "weapon": "phantom",
+  "name": "Gaia's Vengeance Phantom",
+  "file": "phantom-7ae63121.webp",
+  "box": [
+   0.4891,
+   0.5417,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.922
+  ]
+ },
+ "000ad7b1-44b0-9345-ea47-9cbd7dcdbb38": {
+  "weapon": "vandal",
+  "name": "Gaia's Vengeance Vandal",
+  "file": "vandal-000ad7b1.webp",
+  "box": [
+   0.5312,
+   0.5315,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.994
+  ]
+ },
+ "fe7cd972-4651-2865-257b-51846321ad61": {
+  "weapon": "phantom",
+  "name": "Helix Phantom",
+  "file": "phantom-fe7cd972.webp",
+  "box": [
+   0.537,
+   0.5407,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.993
+  ]
+ },
+ "917ca6e8-403e-3691-78d9-a8aa6118385f": {
+  "weapon": "vandal",
+  "name": "Imperium Vandal",
+  "file": "vandal-917ca6e8.webp",
+  "box": [
+   0.5443,
+   0.5361,
+   0.9484,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.993
+  ]
+ },
+ "8f82cff0-44b9-b792-8dd2-b2be8538421b": {
+  "weapon": "phantom",
+  "name": "Kohaku & Matsuba Phantom",
+  "file": "phantom-8f82cff0.webp",
+  "box": [
+   0.4766,
+   0.5148,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.996
+  ]
+ },
+ "148d7f02-4259-9c17-a1a4-6fa220a56551": {
+  "weapon": "vandal",
+  "name": "Magepunk Vandal",
+  "file": "vandal-148d7f02.webp",
+  "box": [
+   0.5422,
+   0.5343,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.993
+  ]
+ },
+ "6460e252-48ef-8312-6f4f-2cb5f1b56972": {
+  "weapon": "vandal",
+  "name": "Nunca Olvidados Vandal",
+  "file": "vandal-6460e252.webp",
+  "box": [
+   0.5562,
+   0.5486,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.991
+  ]
+ },
+ "6c4315b8-4ff1-baaa-5aac-5790c7443353": {
+  "weapon": "vandal",
+  "name": "Origin Vandal",
+  "file": "vandal-6c4315b8.webp",
+  "box": [
+   0.4922,
+   0.5236,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.983
+  ]
+ },
+ "522a264e-4ca7-adb0-6cf1-28b2ef938727": {
+  "weapon": "vandal",
+  "name": "Prelude to Chaos Vandal",
+  "file": "vandal-522a264e.webp",
+  "box": [
+   0.5552,
+   0.5389,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.994
+  ]
+ },
+ "44b7b110-46bf-ccbb-2613-29a5df296461": {
+  "weapon": "phantom",
+  "name": "Prime//2.0 Phantom",
+  "file": "phantom-44b7b110.webp",
+  "box": [
+   0.5401,
+   0.5407,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.994
+  ]
+ },
+ "9877d50b-43b1-837a-802a-bf8a3b98e2dd": {
+  "weapon": "phantom",
+  "name": "Protocol 781-A Phantom",
+  "file": "phantom-9877d50b.webp",
+  "box": [
+   0.5016,
+   0.5417,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.992
+  ]
+ },
+ "e5490f71-455b-74ad-f762-f5a876d4dff9": {
+  "weapon": "vandal",
+  "name": "RGX 11z Pro Vandal",
+  "file": "vandal-e5490f71.webp",
+  "box": [
+   0.5,
+   0.5458,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.991
+  ]
+ },
+ "d67b929f-4431-61c0-286e-3ebf3d11c4af": {
+  "weapon": "phantom",
+  "name": "Recon Phantom",
+  "file": "phantom-d67b929f.webp",
+  "box": [
+   0.5508,
+   0.5389,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.988
+  ]
+ },
+ "a8652d02-458c-461c-8aa8-b7a520455023": {
+  "weapon": "phantom",
+  "name": "Sentinels of Light Phantom",
+  "file": "phantom-a8652d02.webp",
+  "box": [
+   0.5474,
+   0.5417,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.952
+  ]
+ },
+ "e8df3725-40de-b8ec-77bd-62a989685a85": {
+  "weapon": "vandal",
+  "name": "Sentinels of Light Vandal",
+  "file": "vandal-e8df3725.webp",
+  "box": [
+   0.5828,
+   0.5403,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.804
+  ]
+ },
+ "d6c7ff28-467e-bb3f-3c0c-c5b9445e55ca": {
+  "weapon": "vandal",
+  "name": "Singularity Vandal",
+  "file": "vandal-d6c7ff28.webp",
+  "box": [
+   0.5026,
+   0.5389,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.993
+  ]
+ },
+ "98c9bc4e-4fb3-206f-3f6b-06a17b53e95b": {
+  "weapon": "phantom",
+  "name": "Soulstrife Phantom",
+  "file": "phantom-98c9bc4e.webp",
+  "box": [
+   0.5464,
+   0.5398,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.994
+  ]
+ },
+ "42fe7bf8-40ba-b1f4-df5e-34a6f51f29bf": {
+  "weapon": "phantom",
+  "name": "Sovereign Phantom",
+  "file": "phantom-42fe7bf8.webp",
+  "box": [
+   0.5021,
+   0.5389,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.996
+  ]
+ },
+ "980fa063-436e-e51f-c38d-70a5b93a0f1c": {
+  "weapon": "phantom",
+  "name": "Spectrum Phantom",
+  "file": "phantom-980fa063.webp",
+  "box": [
+   0.5305,
+   0.5403,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.992
+  ]
+ },
+ "e8dc658b-4c7c-2338-facd-7d8d2813560a": {
+  "weapon": "vandal",
+  "name": "Titanmail Vandal",
+  "file": "vandal-e8dc658b.webp",
+  "box": [
+   0.5479,
+   0.5343,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.995
+  ]
+ },
+ "b6f79657-4a6d-e2ae-3d64-4fbcde2958a4": {
+  "weapon": "vandal",
+  "name": "XERØFANG Vandal ",
+  "file": "vandal-b6f79657.webp",
+  "box": [
+   0.5068,
+   0.5454,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.994
+  ]
+ },
+ "fac0cea1-45a9-1549-c120-af8f0150e562": {
+  "weapon": "phantom",
+  "name": "Xenohunter Phantom",
+  "file": "phantom-fac0cea1.webp",
+  "box": [
+   0.5177,
+   0.5426,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.993
+  ]
+ },
+ "bbd3a52f-411e-3475-a6aa-ea88b54de53c": {
+  "weapon": "vandal",
+  "name": "Overdrive Vandal",
+  "file": "vandal-bbd3a52f.webp",
+  "box": [
+   0.5375,
+   0.5361,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.993
+  ]
+ },
+ "d8d5d7a1-4d81-8560-54bc-0692ab40f69b": {
+  "weapon": "vandal",
+  "name": "Kuronami Vandal",
+  "file": "vandal-d8d5d7a1.webp",
+  "box": [
+   0.5427,
+   0.5481,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.996
+  ]
+ },
+ "3f6410af-4fd7-74fb-c0f4-6ab61d30022c": {
+  "weapon": "phantom",
+  "name": "Kuronami Phantom",
+  "file": "phantom-3f6410af.webp",
+  "box": [
+   0.524,
+   0.5407,
+   1.0,
+   1.0
+  ],
+  "muzzle": [
+   0,
+   0.974
+  ]
+ }
+}

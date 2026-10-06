@@ -8,7 +8,9 @@ import { buildBot, buildSphere, disposeObject, setHighlighted } from './targets'
 import { HitPart, Pose, ScenarioContext, ScenarioDef, ScenarioResult, Target } from './types'
 import Crosshair from '../components/Crosshair'
 import { gameFovValue, useSettings } from '../settings'
-import { play, warmAudio } from '../lib/audio'
+import { play, playShot, preloadSample, warmAudio } from '../lib/audio'
+import { equippedWeapon } from '../lib/weapons'
+import Viewmodel, { ViewmodelHandle } from './Viewmodel'
 
 interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -23,6 +25,9 @@ const PITCH_LIMIT = THREE.MathUtils.degToRad(89)
 const RESTART_HOLD_MS = 600
 const TRACK_TICK_MS = 70
 const DEFAULT_RADIUS = 0.5
+/** Intervalo do coice visual enquanto segura o clique nos cenários de tracking. */
+const HOLD_KICK_MS = 95
+const SWAY_MAX_PX = 22
 
 interface Hud {
   remaining: string
@@ -43,6 +48,8 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
   const [paused, setPaused] = useState(false)
   const [restartHold, setRestartHold] = useState(0)
   const controlsRef = useRef<{ resume: () => void; restart: () => void } | null>(null)
+  const viewRef = useRef<ViewmodelHandle>(null)
+  const weapon = equippedWeapon(settings.game, settings.weaponByGame, settings.skinByWeapon)
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
 
@@ -80,6 +87,13 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
     let rHeldSince: number | null = null
     let lastHoldShown = 0
     let lastTickAt = 0
+    let lastKickAt = 0
+    let mouseDx = 0
+    let mouseDy = 0
+    let swayX = 0
+    let swayY = 0
+    const shotProfile = weapon?.shot ?? null
+    const shotSample = weapon?.shotSound
     const sound = settings.sound
     const volume = sound.volume / 100
 
@@ -266,13 +280,16 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
       yaw -= e.movementX * radPerCount
       pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch - e.movementY * radPerCount))
       camera.rotation.set(pitch, yaw, 0, 'YXZ')
+      mouseDx += e.movementX
+      mouseDy += e.movementY
     }
 
     function onMouseDown(e: MouseEvent): void {
       if (e.button !== 0 || !document.pointerLockElement || ended || paused) return
       firing = true
       if (def.mode !== 'click') return
-      if (sound.shot) play('shot', volume)
+      if (sound.shot) playShot(volume, shotSample, shotProfile)
+      viewRef.current?.kick()
       rec.recordShot()
       ctx.now = performance.now()
       const hit = raycastCenter()
@@ -374,6 +391,18 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
       }
 
       if (def.mode !== 'click') recordTracking()
+
+      // A arma fica um pouco pra trás do movimento, como nos FPS.
+      const clampSway = (v: number): number => Math.max(-SWAY_MAX_PX, Math.min(SWAY_MAX_PX, v))
+      swayX += (clampSway(-mouseDx * 0.35) - swayX) * 0.18
+      swayY += (clampSway(-mouseDy * 0.35) - swayY) * 0.18
+      mouseDx = 0
+      mouseDy = 0
+      viewRef.current?.sway(swayX, swayY)
+      if (def.mode === 'hold' && firing && now - lastKickAt >= HOLD_KICK_MS) {
+        lastKickAt = now
+        viewRef.current?.kick()
+      }
 
       if (def.mode === 'hold') {
         const hit = firing ? raycastCenter() : null
@@ -494,6 +523,7 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
             </div>
           </div>
         )}
+        {weapon?.firstPerson && <Viewmodel ref={viewRef} view={weapon.firstPerson} />}
         <div className="aim-crosshair">
           <Crosshair config={settings.crosshair} />
         </div>
@@ -534,6 +564,19 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
           </dd>
         </div>
         <div>
+          <dt>Arma</dt>
+          <dd className="spec-weapon">
+            {weapon ? (
+              <>
+                <img src={weapon.image} alt="" />
+                {weapon.skinName ?? weapon.label}
+              </>
+            ) : (
+              'Sem arma na tela'
+            )}
+          </dd>
+        </div>
+        <div>
           <dt>Atalhos</dt>
           <dd>
             Segure <kbd>R</kbd> pra reiniciar, <kbd>Esc</kbd> pausa
@@ -546,6 +589,7 @@ export default function ScenarioRunner({ def, sens, onComplete, onAbort, stepLab
           className="btn btn-primary"
           onClick={() => {
             warmAudio()
+            if (weapon?.shotSound) preloadSample(weapon.shotSound)
             setPhase('running')
           }}
         >

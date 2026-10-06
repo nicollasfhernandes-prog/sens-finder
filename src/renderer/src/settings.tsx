@@ -1,5 +1,7 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react'
 import { convertSens, GameId, GAMES, roundSens } from './lib/sensitivity'
+import type { WeaponId } from './lib/weapons'
+import type { Skin } from './lib/skinViewmodels'
 
 export type CrosshairStyle = 'cross' | 'cross-dot' | 'dot'
 
@@ -32,6 +34,10 @@ export interface Settings {
   targetColor: string
   backgroundColor: string
   wallColor: string
+  /** Arma na mão durante os treinos, por jogo. Sem escolha = a primeira do jogo. */
+  weaponByGame: Partial<Record<GameId, WeaponId | 'none'>>
+  /** Skin escolhida por arma (sem entrada = padrão). */
+  skinByWeapon: Partial<Record<WeaponId, Skin>>
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -51,7 +57,9 @@ export const DEFAULT_SETTINGS: Settings = {
   sound: { volume: 60, shot: true, hit: true },
   targetColor: '#ff4655',
   backgroundColor: '#0f1923',
-  wallColor: '#1a2632'
+  wallColor: '#1a2632',
+  weaponByGame: {},
+  skinByWeapon: {}
 }
 
 const STORAGE_KEY = 'vsf.settings.v1'
@@ -107,7 +115,7 @@ export function SettingsProvider({ children }: { children: ReactNode }): JSX.Ele
     updateCrosshair: (patch) => setSettings((s) => ({ ...s, crosshair: { ...s.crosshair, ...patch } })),
     updateSound: (patch) => setSettings((s) => ({ ...s, sound: { ...s.sound, ...patch } })),
     reset: () =>
-      setSettings((s) => ({ ...DEFAULT_SETTINGS, game: s.game, sens: s.sens, dpi: s.dpi, fovByGame: s.fovByGame }))
+      setSettings((s) => ({ ...DEFAULT_SETTINGS, game: s.game, sens: s.sens, dpi: s.dpi, fovByGame: s.fovByGame, weaponByGame: s.weaponByGame, skinByWeapon: s.skinByWeapon }))
   }
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>

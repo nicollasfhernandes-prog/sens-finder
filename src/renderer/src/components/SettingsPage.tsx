@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toValorantCode, VALORANT_LIMITS, VALORANT_PRESET_COLORS } from '../lib/crosshairCode'
 import { GAME_IDS, GameId, GAMES, horizontalFov169, verticalFov } from '../lib/sensitivity'
 import { CrosshairStyle, gameFovValue, useSettings } from '../settings'
-import { play, warmAudio } from '../lib/audio'
+import { play, playShot, preloadSample, warmAudio } from '../lib/audio'
 import Crosshair from './Crosshair'
+import WeaponPicker from './WeaponPicker'
+import { equippedWeapon } from '../lib/weapons'
 
 const CROSSHAIR_STYLES: { id: CrosshairStyle; label: string }[] = [
   { id: 'cross', label: 'Cruz' },
@@ -57,7 +59,15 @@ function SliderField({ label, value, min, max, onChange }: SliderProps): JSX.Ele
   return (
     <label className="field slider-field">
       <span className="label">{label}</span>
-      <input type="range" min={min} max={max} step={1} value={value} onChange={(e) => onChange(Number(e.target.value))} />
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={1}
+        value={value}
+        style={{ ['--pct' as string]: `${((value - min) / (max - min)) * 100}%` }}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
       <span className="num slider-value">{value}</span>
     </label>
   )
@@ -66,11 +76,16 @@ function SliderField({ label, value, min, max, onChange }: SliderProps): JSX.Ele
 export default function SettingsPage(): JSX.Element {
   const { settings, updateCrosshair, updateSound, update, changeGame, reset } = useSettings()
   const snd = settings.sound
+  const w = equippedWeapon(settings.game, settings.weaponByGame, settings.skinByWeapon)
+  // Carrega o disparo gravado da skin já ao abrir, pra o "Ouvir disparo" sair com ele.
+  useEffect(() => {
+    if (w?.shotSound) preloadSample(w.shotSound)
+  }, [w?.shotSound])
 
   function preview(kind: 'shot' | 'hit' | 'both'): void {
     warmAudio()
     const v = snd.volume / 100
-    if (kind !== 'hit') play('shot', v)
+    if (kind !== 'hit') playShot(v, w?.shotSound, w?.shot ?? null)
     if (kind !== 'shot') play('hit', v)
   }
   const [copied, setCopied] = useState(false)
@@ -143,6 +158,11 @@ export default function SettingsPage(): JSX.Element {
               Equivale a {horizontalFov169(verticalFov(settings.game, fovValue)).toFixed(1).replace('.', ',')}° de campo
               de visão horizontal numa tela 16:9. Use o mesmo FOV do jogo pra mira andar na tela na mesma velocidade.
             </p>
+          </fieldset>
+
+          <fieldset className="panel">
+            <legend className="panel-title">Arma</legend>
+            <WeaponPicker />
           </fieldset>
 
           <fieldset className="panel">

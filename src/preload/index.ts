@@ -1,7 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 const api = {
-  setFullscreen: (value: boolean) => ipcRenderer.send('set-fullscreen', value)
+  setFullscreen: (value: boolean) => ipcRenderer.send('set-fullscreen', value),
+  windowControl: (action: 'minimize' | 'maximize' | 'close') => ipcRenderer.send('window-control', action),
+  onMaximized: (cb: (maximized: boolean) => void) => {
+    const listener = (_e: unknown, value: boolean): void => cb(value)
+    ipcRenderer.on('window-maximized', listener)
+    return () => ipcRenderer.removeListener('window-maximized', listener)
+  }
 }
 
 contextBridge.exposeInMainWorld('api', api)

@@ -2,6 +2,8 @@
 // sem latência de carregamento. Cada som recebe o contexto e o destino pra poder ser
 // renderizado também num OfflineAudioContext (testes).
 
+import type { ShotProfile } from './weapons'
+
 export type SoundKind = 'shot' | 'hit' | 'body' | 'tick'
 
 let live: AudioContext | null = null
@@ -61,11 +63,25 @@ function burst(ctx: BaseAudioContext, dest: AudioNode, t0: number, filter: Biqua
 }
 
 /** Desenha o som em `dest` a partir de `t0`. Volume de 0 a 1. */
-export function synth(ctx: BaseAudioContext, dest: AudioNode, kind: SoundKind, t0: number, volume: number): void {
+export function synth(
+  ctx: BaseAudioContext,
+  dest: AudioNode,
+  kind: SoundKind,
+  t0: number,
+  volume: number,
+  shot?: ShotProfile | null
+): void {
   const v = Math.max(0, Math.min(1, volume))
   if (v === 0) return
   switch (kind) {
     case 'shot':
+      if (shot) {
+        // Timbre da arma escolhida. Silenciada: estalo filtrado, sem chiado agudo.
+        burst(ctx, dest, t0, shot.suppressed ? 'lowpass' : 'bandpass', shot.crack, 0.9, (shot.suppressed ? 0.42 : 0.5) * v, shot.decay * 0.55)
+        if (!shot.suppressed) burst(ctx, dest, t0, 'highpass', 6500, 0.7, 0.16 * v, 0.02)
+        tone(ctx, dest, t0, 'sine', shot.bodyFrom, shot.bodyTo, (shot.suppressed ? 0.3 : 0.5) * v, shot.decay)
+        break
+      }
       // "Tak" seco: estalo agudo de ruído + baque grave curto.
       burst(ctx, dest, t0, 'bandpass', 3200, 0.9, 0.5 * v, 0.045)
       burst(ctx, dest, t0, 'highpass', 6500, 0.7, 0.18 * v, 0.02)
@@ -102,8 +118,50 @@ export function warmAudio(): void {
   }
 }
 
-export function play(kind: SoundKind, volume: number): void {
+export function play(kind: SoundKind, volume: number, shot?: ShotProfile | null): void {
   if (!live) warmAudio()
   if (!live) return
-  synth(live, live.destination, kind, live.currentTime, volume)
+  synth(live, live.destination, kind, live.currentTime, volume, shot)
+}
+
+// Disparos gravados (recortados dos vídeos das skins), decodificados uma vez e guardados.
+const samples = new Map<string, AudioBuffer | Promise<void>>()
+/** As gravações estão normalizadas no pico; isto as deixa no mesmo volume do disparo sintetizado. */
+const SAMPLE_GAIN = 0.55
+
+/** Começa a carregar a gravação (chamado antes do treino, pra o primeiro tiro já sair com ela). */
+export function preloadSample(url: string): void {
+  warmAudio()
+  if (!live || samples.has(url)) return
+  const ctx = live
+  samples.set(
+    url,
+    fetch(url)
+      .then((r) => r.arrayBuffer())
+      .then((b) => ctx.decodeAudioData(b))
+      .then((buf) => void samples.set(url, buf))
+      .catch(() => void samples.delete(url))
+  )
+}
+
+/**
+ * Toca o disparo gravado. Enquanto a gravação não carregou (ou se falhar), usa o sintetizado.
+ */
+export function playShot(volume: number, sample: string | undefined, fallback: ShotProfile | null): void {
+  if (!live) warmAudio()
+  if (!live) return
+  const buf = sample ? samples.get(sample) : undefined
+  if (!(buf instanceof AudioBuffer)) {
+    if (sample) preloadSample(sample)
+    play('shot', volume, fallback)
+    return
+  }
+  const v = Math.max(0, Math.min(1, volume))
+  if (v === 0) return
+  const src = live.createBufferSource()
+  src.buffer = buf
+  const g = live.createGain()
+  g.gain.value = v * SAMPLE_GAIN
+  src.connect(g).connect(live.destination)
+  src.start()
 }

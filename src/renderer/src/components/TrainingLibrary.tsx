@@ -80,7 +80,7 @@ export default function TrainingLibrary(): JSX.Element {
       <header className="page-head page-head-row">
         <div>
           <h1 className="display">Treinos</h1>
-          <p className="lede">Cada partida analisa seus flicks e sugere um ajuste de sensibilidade.</p>
+          <p className="lede">Cada partida analisa seus flicks. Com 3 partidas na mesma sens, o app recomenda um ajuste.</p>
         </div>
         <SensControl
           game={settings.game}
