@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { GAME_IDS, GameId, GAMES } from '../lib/sensitivity'
 import { useSettings } from '../settings'
+import UpdatePill from './UpdatePill'
 
 function Logo(): JSX.Element {
   return (
@@ -29,6 +30,7 @@ export default function TitleBar(): JSX.Element {
       </div>
 
       <div className="titlebar-tools">
+        <UpdatePill />
         <label className="game-pill">
           <span className="visually-hidden">Jogo</span>
           <select value={settings.game} onChange={(e) => changeGame(e.target.value as GameId)}>

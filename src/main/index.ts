@@ -1,5 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
 import { join } from 'path'
+import { setupUpdater } from './updater'
 
 const isDev = !app.isPackaged
 
@@ -70,6 +71,7 @@ Menu.setApplicationMenu(null)
 
 app.whenReady().then(() => {
   createWindow()
+  setupUpdater(() => mainWindow)
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
