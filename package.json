@@ -1,7 +1,7 @@
 {
   "name": "sens-finder",
   "productName": "Sens Finder",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Encontre sua sensibilidade ideal para Valorant, CS2 e outros FPS",
   "main": "./out/main/index.js",
   "author": "nicollasfhernandes-prog",

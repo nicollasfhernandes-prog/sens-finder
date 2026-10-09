@@ -215,13 +215,16 @@ export interface AdjustmentSuggestion {
 
 const MAX_ADJUST = 0.15
 const DEADZONE = 0.01
-const FLICK_WEIGHT = 0.6
-const TRACKING_WEIGHT = 0.4
-// Oscilações/s acima disso no tracking indicam correção demais (sens alta); abaixo, a mira
-// fica atrás do alvo sem cruzar (sens baixa). Só pesa na proporção do tempo fora do alvo.
-const TRACKING_CROSSINGS_BASELINE = 1
-const HIT_RATE_FLOOR = 0.7
-const GAIN_TOLERANCE = 0.03
+// O tracking é um sinal mais fraco de direção que os flicks: pesa menos.
+const FLICK_WEIGHT = 0.75
+const TRACKING_WEIGHT = 0.25
+// Trocas de lado por segundo no tracking. Dentro da faixa é correção normal de quem segue um alvo
+// que muda de direção; acima, corrige demais (sens alta); abaixo, fica atrás sem cruzar (sens baixa).
+// Só pesa na proporção do tempo fora do alvo.
+const TRACKING_CROSSINGS_LOW = 1.2
+const TRACKING_CROSSINGS_HIGH = 3.5
+// Em FPS o impulso principal costuma ir de ~86% a ~98% do caminho; dentro disso não conta.
+const GAIN_TOLERANCE = 0.06
 // O impulso principal é o sinal mais direto; overflick/underflick entram como reforço.
 const GAIN_SIGNAL_WEIGHT = 0.65
 // Alguns over/underflicks são normais; só o desequilíbrio acima disso conta.
@@ -295,24 +298,28 @@ export function recommendAdjustment(evidence: Evidence[], referenceAngularRadius
   const flickBias =
     gainBias !== null ? GAIN_SIGNAL_WEIGHT * gainBias + (1 - GAIN_SIGNAL_WEIGHT) * overUnderBias : overUnderBias
 
+  const crossings = breakdown.trackingCrossingsPerSec
   const trackBias =
-    breakdown.trackingCoverage !== null && breakdown.trackingCrossingsPerSec !== null
+    breakdown.trackingCoverage !== null && crossings !== null
       ? clamp(
-          (breakdown.trackingCrossingsPerSec - TRACKING_CROSSINGS_BASELINE) / TRACKING_CROSSINGS_BASELINE,
+          crossings > TRACKING_CROSSINGS_HIGH
+            ? (crossings - TRACKING_CROSSINGS_HIGH) / TRACKING_CROSSINGS_HIGH
+            : crossings < TRACKING_CROSSINGS_LOW
+              ? (crossings - TRACKING_CROSSINGS_LOW) / TRACKING_CROSSINGS_LOW
+              : 0,
           -1,
           1
         ) *
         (1 - breakdown.trackingCoverage)
       : 0
 
-  const missPenalty = breakdown.hitRate !== null ? Math.max(0, HIT_RATE_FLOOR - breakdown.hitRate) : 0
-
   const hasFlick = breakdown.flicksAnalyzed > 0
   const hasTrack = breakdown.trackingCoverage !== null
   const flickWeight = hasFlick ? (hasTrack ? FLICK_WEIGHT : 1) : 0
   const trackWeight = hasTrack ? (hasFlick ? TRACKING_WEIGHT : 1) : 0
 
-  const bias = flickWeight * flickBias + trackWeight * trackBias + missPenalty
+  // Errar tiro não diz se a sens está alta ou baixa, então a precisão não entra na direção.
+  const bias = flickWeight * flickBias + trackWeight * trackBias
   let multiplier = clamp(1 - MAX_ADJUST * bias, 1 - MAX_ADJUST, 1 + MAX_ADJUST)
   if (Math.abs(multiplier - 1) < DEADZONE) multiplier = 1
 
@@ -336,11 +343,11 @@ export function recommendAdjustment(evidence: Evidence[], referenceAngularRadius
   if (breakdown.gainMean !== null && gainBias !== null) {
     const g = Math.round(breakdown.gainMean * 100)
     if (gainBias > 0) {
-      reasons.push(`O impulso principal percorre em média ${g}% da distância, acima dos ~92% típicos: a mão passa do ponto, sinal de sens alta.`)
+      reasons.push(`O impulso principal percorre em média ${g}% da distância, acima da faixa normal (86% a 98%): a mão passa do ponto, sinal de sens alta.`)
     } else if (gainBias < 0) {
-      reasons.push(`O impulso principal percorre em média ${g}% da distância, abaixo dos ~92% típicos: a mão para cedo demais, sinal de sens baixa.`)
+      reasons.push(`O impulso principal percorre em média ${g}% da distância, abaixo da faixa normal (86% a 98%): a mão para cedo demais, sinal de sens baixa.`)
     } else {
-      reasons.push(`O impulso principal percorre em média ${g}% da distância, perto dos ~92% típicos de uma mão calibrada.`)
+      reasons.push(`O impulso principal percorre em média ${g}% da distância, dentro da faixa normal de uma mão calibrada.`)
     }
   }
 
@@ -350,15 +357,37 @@ export function recommendAdjustment(evidence: Evidence[], referenceAngularRadius
     reasons.push('No tracking sua mira ficou atrás do alvo sem alcançá-lo: sinal de sens baixa.')
   }
 
-  if (missPenalty > 0 && breakdown.hitRate !== null) {
-    reasons.push(`Taxa de acerto de ${pct(breakdown.hitRate)} puxa a sens pra baixo.`)
-  }
-
   if (reasons.length === 0) {
     reasons.push('Tracking equilibrado: nenhum sinal claro pra subir ou descer.')
   }
 
   return { multiplier, reasons, breakdown }
+}
+
+/** Faixa de cm por volta (360°) em que fica praticamente todo jogador de FPS. */
+export const CM360_SLOWEST = 80
+export const CM360_FASTEST = 15
+
+/**
+ * Não deixa a recomendação levar a sens pra fora da faixa plausível: abaixo de tão lenta ela não
+ * desce, acima de tão rápida não sobe. Protege contra um viés pequeno que se acumula retestando.
+ */
+export function guardMultiplier(
+  currentSens: number,
+  multiplier: number,
+  game: GameId,
+  dpi: number
+): { multiplier: number; limited: 'slow' | 'fast' | null } {
+  const cm = gameCm360(dpi, currentSens, game)
+  // Multiplicar a sens por m divide os cm por volta por m.
+  if (multiplier < 1) {
+    const floor = Math.min(1, cm / CM360_SLOWEST)
+    if (multiplier < floor) return { multiplier: floor, limited: 'slow' }
+  } else if (multiplier > 1) {
+    const ceil = Math.max(1, cm / CM360_FASTEST)
+    if (multiplier > ceil) return { multiplier: ceil, limited: 'fast' }
+  }
+  return { multiplier, limited: null }
 }
 
 export function suggestAdjustment(result: AimTestResult, referenceAngularRadiusDeg: number): AdjustmentSuggestion {

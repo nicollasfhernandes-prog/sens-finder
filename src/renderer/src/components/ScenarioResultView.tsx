@@ -40,7 +40,7 @@ export default function ScenarioResultView({
   const thisGame = recommendAdjustment([evidenceOf(r)], REFERENCE_TARGET_ANGULAR_RADIUS_DEG)
   const [battery] = useState(() => currentBattery(loadHistory(), settings.game, settings.dpi, sens))
   const adjustment = battery.ready ? recommendAdjustment(battery.evidence, REFERENCE_TARGET_ANGULAR_RADIUS_DEG) : null
-  const recommended = adjustment ? recommendedSens(sens, adjustment, settings.game) : roundSens(sens, settings.game)
+  const recommended = adjustment ? recommendedSens(sens, adjustment, settings.game, settings.dpi) : roundSens(sens, settings.game)
   const changed = recommended !== roundSens(sens, settings.game)
   const isRecord = previousBest !== null && r.score > previousBest
 

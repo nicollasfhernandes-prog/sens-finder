@@ -29,7 +29,7 @@ export default function FinalResult({
   const gameId = answers.targetGame
   const game = GAMES[gameId]
   const adjustment = aimResult ? suggestAdjustment(aimResult, REFERENCE_TARGET_ANGULAR_RADIUS_DEG) : null
-  const finalSens = adjustment ? recommendedSens(baseSens, adjustment, gameId) : roundSens(baseSens, gameId)
+  const finalSens = adjustment ? recommendedSens(baseSens, adjustment, gameId, answers.dpi) : roundSens(baseSens, gameId)
   const changed = finalSens !== roundSens(baseSens, gameId)
   const b = adjustment?.breakdown
   // Junta os flicks do Flick e do Gridshot (mesma sens) numa análise só.

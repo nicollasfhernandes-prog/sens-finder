@@ -1,5 +1,5 @@
 import { ReactNode } from 'react'
-import { AdjustmentBreakdown, AdjustmentSuggestion, gameCm360, GameId, roundSens } from '../lib/sensitivity'
+import { AdjustmentBreakdown, AdjustmentSuggestion, CM360_FASTEST, CM360_SLOWEST, gameCm360, GameId, guardMultiplier, roundSens } from '../lib/sensitivity'
 import MousepadRuler, { RulerSpan } from './MousepadRuler'
 
 function pct(v: number): string {
@@ -84,14 +84,17 @@ interface RecommendationProps {
   children?: ReactNode
 }
 
-/** Sens recomendada já arredondada pra precisão que o jogo aceita. */
-export function recommendedSens(currentSens: number, adjustment: AdjustmentSuggestion, game: GameId): number {
-  return roundSens(currentSens * adjustment.multiplier, game)
+/** Sens recomendada, dentro da faixa plausível de cm por volta e arredondada pro que o jogo aceita. */
+export function recommendedSens(currentSens: number, adjustment: AdjustmentSuggestion, game: GameId, dpi: number): number {
+  const { multiplier } = guardMultiplier(currentSens, adjustment.multiplier, game, dpi)
+  return roundSens(currentSens * multiplier, game)
 }
 
 export function Recommendation({ currentSens, game, dpi, adjustment, note, children }: RecommendationProps): JSX.Element {
   const current = roundSens(currentSens, game)
-  const recommended = recommendedSens(currentSens, adjustment, game)
+  const recommended = recommendedSens(currentSens, adjustment, game, dpi)
+  const { limited } = guardMultiplier(currentSens, adjustment.multiplier, game, dpi)
+  const cmNow = gameCm360(dpi, current, game).toFixed(0)
   // Compara os valores arredondados: no R6, por exemplo, um ajuste de 3% pode não mudar o inteiro.
   const delta = Math.round((recommended / current - 1) * 100)
   const direction = recommended > current ? 'up' : recommended < current ? 'down' : 'hold'
@@ -126,6 +129,18 @@ export function Recommendation({ currentSens, game, dpi, adjustment, note, child
         {adjustment.reasons.map((r) => (
           <li key={r}>{r}</li>
         ))}
+        {limited === 'slow' && (
+          <li>
+            Sua sens já está bem lenta ({cmNow} cm por volta). Abaixo de {CM360_SLOWEST} cm quase ninguém joga,
+            então a recomendação não desce mais que isso.
+          </li>
+        )}
+        {limited === 'fast' && (
+          <li>
+            Sua sens já está bem rápida ({cmNow} cm por volta). Acima disso quase ninguém joga, então a
+            recomendação não sobe mais que {CM360_FASTEST} cm por volta.
+          </li>
+        )}
       </ul>
       {note && <p className="fine">{note}</p>}
       {children && <div className="button-row">{children}</div>}
